@@ -36,10 +36,6 @@ public class Wallet {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
     public BigDecimal getBalance() {
         return balance;
     }
@@ -48,27 +44,7 @@ public class Wallet {
         this.balance = balance;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Long getVersion() {
-        return version;
-    }
-
-    public void setVersion(Long version) {
-        this.version = version;
     }
 }

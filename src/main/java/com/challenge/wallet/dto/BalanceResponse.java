@@ -7,8 +7,7 @@ import java.time.LocalDateTime;
 
 public record BalanceResponse(
         BigDecimal balance,
-        LocalDateTime updatedAt
-) {
+        LocalDateTime updatedAt) {
 
     public static BalanceResponse from(Wallet wallet) {
         return new BalanceResponse(wallet.getBalance(), wallet.getUpdatedAt());

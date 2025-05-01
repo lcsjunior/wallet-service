@@ -11,7 +11,7 @@ import java.util.UUID;
 public class WalletRepositoryImpl implements WalletRepository, PanacheRepositoryBase<Wallet, UUID> {
 
     @Override
-    public Wallet persistWallet(Wallet wallet) {
+    public Wallet save(Wallet wallet) {
         this.persistAndFlush(wallet);
         return wallet;
     }

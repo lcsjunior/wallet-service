@@ -5,8 +5,7 @@ import com.challenge.wallet.model.Wallet;
 import java.util.UUID;
 
 public record CreateWalletResponse(
-        UUID walletId
-) {
+        UUID walletId) {
 
     public static CreateWalletResponse from(Wallet wallet) {
         return new CreateWalletResponse(wallet.getId());
