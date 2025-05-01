@@ -1,5 +1,8 @@
 package com.challenge.wallet.service;
 
+import com.challenge.wallet.bean.HistoricalBalanceBean;
+import com.challenge.wallet.dto.HistoricalBalanceQuery;
+import com.challenge.wallet.exception.InvalidDatetimeFormatException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
@@ -9,6 +12,10 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.UUID;
 
 @ApplicationScoped
 public class TransactionServiceImpl implements TransactionService {
@@ -27,5 +34,19 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public Transaction createTransaction(Wallet wallet, BigDecimal amount, TransactionType type) {
         return transactionRepository.save(new Transaction(wallet, amount, type, null));
+    }
+
+    @Override
+    public HistoricalBalanceBean getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query) {
+        LocalDateTime atDateTime = parseIsoDateTime(query.at());
+        return transactionRepository.getHistoricalBalance(walletId, atDateTime);
+    }
+
+    private LocalDateTime parseIsoDateTime(String dateTime) {
+        try {
+            return LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            throw new InvalidDatetimeFormatException();
+        }
     }
 }

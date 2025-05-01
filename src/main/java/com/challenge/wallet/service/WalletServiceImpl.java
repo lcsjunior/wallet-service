@@ -1,15 +1,16 @@
 package com.challenge.wallet.service;
 
+import com.challenge.wallet.bean.HistoricalBalanceBean;
 import com.challenge.wallet.constants.Constants;
 import com.challenge.wallet.dto.BalanceResponse;
 import com.challenge.wallet.dto.CreateWalletResponse;
 import com.challenge.wallet.dto.DepositRequest;
 import com.challenge.wallet.dto.HistoricalBalanceQuery;
+import com.challenge.wallet.dto.HistoricalBalanceResponse;
 import com.challenge.wallet.dto.TransferRequest;
 import com.challenge.wallet.dto.WithdrawRequest;
 import com.challenge.wallet.exception.InsufficientAmountException;
 import com.challenge.wallet.exception.InsufficientFundsException;
-import com.challenge.wallet.exception.InvalidDatetimeFormatException;
 import com.challenge.wallet.exception.SameWalletTransferException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
@@ -21,8 +22,6 @@ import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -48,10 +47,10 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    public Object getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query) {
-        LocalDateTime atDateTime = parseIsoDateTime(query.at());
+    public HistoricalBalanceResponse getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query) {
         checkWalletExists(walletId);
-        return null;
+        HistoricalBalanceBean historicalBalanceBean = transactionService.getHistoricalBalance(walletId, query);
+        return HistoricalBalanceResponse.from(historicalBalanceBean);
     }
 
     @Transactional
@@ -107,14 +106,6 @@ public class WalletServiceImpl implements WalletService {
     private void credit(Wallet wallet, BigDecimal amount) {
         wallet.setBalance(wallet.getBalance().add(amount));
         walletRepository.save(wallet);
-    }
-
-    private LocalDateTime parseIsoDateTime(String dateTime) {
-        try {
-            return LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
-        } catch (DateTimeParseException e) {
-            throw new InvalidDatetimeFormatException();
-        }
     }
 
     private void checkWalletExists(UUID walletId) {

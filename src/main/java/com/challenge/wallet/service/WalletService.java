@@ -4,6 +4,7 @@ import com.challenge.wallet.dto.BalanceResponse;
 import com.challenge.wallet.dto.CreateWalletResponse;
 import com.challenge.wallet.dto.DepositRequest;
 import com.challenge.wallet.dto.HistoricalBalanceQuery;
+import com.challenge.wallet.dto.HistoricalBalanceResponse;
 import com.challenge.wallet.dto.TransferRequest;
 import com.challenge.wallet.dto.WithdrawRequest;
 
@@ -15,7 +16,7 @@ public interface WalletService {
 
     BalanceResponse getBalance(UUID walletId);
 
-    Object getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query);
+    HistoricalBalanceResponse getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query);
 
     void deposit(DepositRequest depositRequest);
 
