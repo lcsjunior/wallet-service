@@ -10,8 +10,8 @@ import com.challenge.wallet.dto.TransferRequest;
 import com.challenge.wallet.dto.WithdrawRequest;
 import com.challenge.wallet.exception.InsufficientAmountException;
 import com.challenge.wallet.exception.InsufficientFundsException;
-import com.challenge.wallet.exception.InvalidDecimalScaleException;
-import com.challenge.wallet.exception.SameWalletTransferException;
+import com.challenge.wallet.exception.DecimalScaleException;
+import com.challenge.wallet.exception.SameWalletException;
 import com.challenge.wallet.exception.WalletNotFoundException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
@@ -29,6 +29,7 @@ import java.util.UUID;
 
 import static com.challenge.wallet.constants.Constants.ONE_CENT;
 import static com.challenge.wallet.constants.Constants.ONE_TRILLION;
+import static com.challenge.wallet.constants.TestConstants.INVALID_CURRENCY_SCALE;
 import static com.challenge.wallet.constants.TestConstants.NIL_UUID;
 import static com.challenge.wallet.constants.TestConstants.TEST_MAX_DATE;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_3;
@@ -129,8 +130,8 @@ class WalletServiceTest {
     @Test
     void shouldThrowExceptionWhenInvalidDecimalScaleAmountOnDeposit() {
         assertThatThrownBy(() ->
-                walletService.deposit(new DepositRequest(NIL_UUID, BigDecimal.valueOf(0.999))))
-                .isInstanceOf(InvalidDecimalScaleException.class);
+                walletService.deposit(new DepositRequest(NIL_UUID, INVALID_CURRENCY_SCALE)))
+                .isInstanceOf(DecimalScaleException.class);
     }
 
     @Test
@@ -157,8 +158,8 @@ class WalletServiceTest {
     @Test
     void shouldThrowExceptionWhenInvalidDecimalScaleAmountOnWithdraw() {
         assertThatThrownBy(() ->
-                walletService.withdraw(new WithdrawRequest(NIL_UUID, BigDecimal.valueOf(0.999))))
-                .isInstanceOf(InvalidDecimalScaleException.class);
+                walletService.withdraw(new WithdrawRequest(NIL_UUID, INVALID_CURRENCY_SCALE)))
+                .isInstanceOf(DecimalScaleException.class);
     }
 
     @Test
@@ -193,7 +194,21 @@ class WalletServiceTest {
     void shouldThrowExceptionWhenSameWalletTransfer() {
         assertThatThrownBy(() ->
                 walletService.transfer(new TransferRequest(NIL_UUID, NIL_UUID, ONE_CENT)))
-                .isInstanceOf(SameWalletTransferException.class);
+                .isInstanceOf(SameWalletException.class);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInsufficientAmountOnTransfer() {
+        assertThatThrownBy(() ->
+                walletService.transfer(new TransferRequest(NIL_UUID, TEST_UUID_3, BigDecimal.ZERO)))
+                .isInstanceOf(InsufficientAmountException.class);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenInvalidDecimalScaleAmountOnTransfer() {
+        assertThatThrownBy(() ->
+                walletService.transfer(new TransferRequest(NIL_UUID, TEST_UUID_3, INVALID_CURRENCY_SCALE)))
+                .isInstanceOf(DecimalScaleException.class);
     }
 
     @Test
@@ -203,7 +218,7 @@ class WalletServiceTest {
         assertThatThrownBy(() ->
                 walletService.transfer(new TransferRequest(NIL_UUID, TEST_UUID_3, ONE_CENT)))
                 .isInstanceOf(InsufficientFundsException.class);
-        verify(walletRepository, times(2)).getWallet(any(UUID.class));
+        verify(walletRepository, times(1)).getWallet(any(UUID.class));
     }
 
     @Test

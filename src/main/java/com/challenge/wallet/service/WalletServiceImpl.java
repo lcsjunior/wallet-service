@@ -11,8 +11,8 @@ import com.challenge.wallet.dto.TransferRequest;
 import com.challenge.wallet.dto.WithdrawRequest;
 import com.challenge.wallet.exception.InsufficientAmountException;
 import com.challenge.wallet.exception.InsufficientFundsException;
-import com.challenge.wallet.exception.InvalidDecimalScaleException;
-import com.challenge.wallet.exception.SameWalletTransferException;
+import com.challenge.wallet.exception.DecimalScaleException;
+import com.challenge.wallet.exception.SameWalletException;
 import com.challenge.wallet.exception.WalletNotFoundException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
@@ -24,6 +24,8 @@ import jakarta.transaction.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import static com.challenge.wallet.constants.Constants.CURRENCY_DECIMAL_SCALE;
 
 @ApplicationScoped
 public class WalletServiceImpl implements WalletService {
@@ -58,7 +60,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public void deposit(DepositRequest request) {
         BigDecimal amount = request.amount();
-        validateAmount(amount);
+        validatePaymentAmount(amount);
 
         Wallet wallet = getWallet(request.walletId());
         credit(wallet, amount);
@@ -69,7 +71,7 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public void withdraw(WithdrawRequest request) {
         BigDecimal amount = request.amount();
-        validateAmount(amount);
+        validatePaymentAmount(amount);
 
         Wallet wallet = getWallet(request.walletId());
         debit(wallet, amount);
@@ -79,29 +81,25 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     @Override
     public void transfer(TransferRequest request) {
-        BigDecimal amount = request.amount();
-        validateAmount(amount);
+        validateSameWallet(request.fromWalletId(), request.toWalletId());
 
-        if (request.fromWalletId().equals(request.toWalletId())) {
-            throw new SameWalletTransferException();
-        }
+        BigDecimal amount = request.amount();
+        validatePaymentAmount(amount);
+
         Wallet walletFrom = getWallet(request.fromWalletId());
+        validateAvailableBalance(walletFrom.getBalance(), amount);
         Wallet walletTo = getWallet(request.toWalletId());
 
         debit(walletFrom, amount);
-        Transaction transactionFrom = transactionService.createTransaction(walletFrom, amount, TransactionType.DEBIT);
-
         credit(walletTo, amount);
+        Transaction transactionFrom = transactionService.createTransaction(walletFrom, amount, TransactionType.DEBIT);
         transactionService.createTransaction(walletTo, amount, TransactionType.CREDIT, transactionFrom);
     }
 
     private void debit(Wallet wallet, BigDecimal amount) {
-        if (wallet.getBalance().compareTo(amount) < 0) {
-            throw new InsufficientFundsException();
-        }
+        validateAvailableBalance(wallet.getBalance(), amount);
         wallet.setBalance(wallet.getBalance().subtract(amount));
         walletRepository.save(wallet);
-
     }
 
     private void credit(Wallet wallet, BigDecimal amount) {
@@ -117,12 +115,24 @@ public class WalletServiceImpl implements WalletService {
         walletRepository.getWallet(walletId);
     }
 
-    private void validateAmount(BigDecimal amount) {
+    private void validatePaymentAmount(BigDecimal amount) {
         if (amount.compareTo(Constants.ONE_CENT) < 0) {
             throw new InsufficientAmountException();
         }
-        if (amount.scale() > 2) {
-            throw new InvalidDecimalScaleException();
+        if (amount.scale() > CURRENCY_DECIMAL_SCALE) {
+            throw new DecimalScaleException();
+        }
+    }
+
+    private void validateAvailableBalance(BigDecimal balance, BigDecimal amount) {
+        if (balance.compareTo(amount) < 0) {
+            throw new InsufficientFundsException();
+        }
+    }
+
+    private void validateSameWallet(UUID walletId1, UUID walletId2) {
+        if (walletId1.equals(walletId2)) {
+            throw new SameWalletException();
         }
     }
 }

@@ -22,6 +22,7 @@ public class WalletTestFactory {
         return new HistoricalBalanceQuery(toIsoString(TEST_MAX_DATE));
     }
 
+    // NOSONAR
     private WalletTestFactory() {
         throw new IllegalStateException();
     }

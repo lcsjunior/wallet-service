@@ -2,7 +2,7 @@ package com.challenge.wallet.service;
 
 import com.challenge.wallet.bean.HistoricalBalanceBean;
 import com.challenge.wallet.dto.HistoricalBalanceQuery;
-import com.challenge.wallet.exception.InvalidDatetimeFormatException;
+import com.challenge.wallet.exception.DatetimeFormatException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
@@ -43,7 +43,7 @@ public class TransactionServiceImpl implements TransactionService {
         try {
             return LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
         } catch (DateTimeParseException e) {
-            throw new InvalidDatetimeFormatException();
+            throw new DatetimeFormatException();
         }
     }
 }
