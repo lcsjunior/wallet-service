@@ -1,5 +1,6 @@
 package com.challenge.wallet.constants;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,6 +14,9 @@ public class TestConstants {
 
     public static final UUID NIL_UUID = new UUID(0L, 0L);
 
+    public static final BigDecimal INVALID_CURRENCY_SCALE = BigDecimal.valueOf(0.999);
+
+    // NOSONAR
     private TestConstants() {
         throw new IllegalStateException();
     }
