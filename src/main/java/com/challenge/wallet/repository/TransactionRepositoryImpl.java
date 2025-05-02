@@ -11,6 +11,16 @@ import java.util.UUID;
 @ApplicationScoped
 public class TransactionRepositoryImpl implements TransactionRepository, PanacheRepositoryBase<Transaction, UUID> {
 
+    private static final String HISTORICAL_BALANCE_HQL = """
+            select new com.challenge.wallet.bean.HistoricalBalanceBean(
+              coalesce(sum(case when type = 'DEBIT' then -amount else amount end), 0)
+              ,:at
+            )
+            from Transaction
+            where wallet.id = :walletId
+            and createdAt <= :at
+            """;
+
     @Override
     public Transaction save(Transaction transaction) {
         this.persistAndFlush(transaction);
@@ -19,16 +29,8 @@ public class TransactionRepositoryImpl implements TransactionRepository, Panache
 
     @Override
     public HistoricalBalanceBean getHistoricalBalance(UUID walletId, LocalDateTime at) {
-        StringBuilder hql = new StringBuilder()
-                .append("select new com.challenge.wallet.bean.HistoricalBalanceBean(")
-                .append("  coalesce(sum(case when type = 'DEBIT' then -amount else amount end), 0) ")
-                .append("  ,:at ")
-                .append(") ")
-                .append("from Transaction ")
-                .append("where wallet.id = :walletId ")
-                .append("and createdAt <= :at");
         return getEntityManager()
-                .createQuery(hql.toString(), HistoricalBalanceBean.class)
+                .createQuery(HISTORICAL_BALANCE_HQL, HistoricalBalanceBean.class)
                 .setParameter("walletId", walletId)
                 .setParameter("at", at)
                 .getSingleResult();

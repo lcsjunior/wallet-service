@@ -1,26 +1,36 @@
 package com.challenge.wallet.api;
 
-import com.challenge.wallet.dto.BalanceResponse;
 import com.challenge.wallet.dto.CreateWalletResponse;
-import com.challenge.wallet.exception.WalletNotFoundException;
+import com.challenge.wallet.dto.DepositRequest;
+import com.challenge.wallet.dto.TransferRequest;
+import com.challenge.wallet.dto.WithdrawRequest;
+import com.challenge.wallet.service.WalletService;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
-import static com.challenge.wallet.constants.TestConstants.NIL_UUID;
+import static com.challenge.wallet.constants.Constants.ONE_CENT;
+import static com.challenge.wallet.constants.TestConstants.TEST_MAX_DATE;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_1;
+import static com.challenge.wallet.constants.TestConstants.TEST_UUID_2;
+import static com.challenge.wallet.constants.TestConstants.TEST_UUID_3;
+import static com.challenge.wallet.factory.WalletTestFactory.toIsoString;
 import static io.restassured.RestAssured.given;
-import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
+import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static org.apache.http.HttpStatus.SC_CREATED;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.core.Is.is;
 
 @QuarkusTest
 class WalletResourceTest {
+
+    @Inject
+    WalletService walletService;
 
     @Test
     void shouldCreateWalletSuccessfully() {
@@ -44,18 +54,53 @@ class WalletResourceTest {
                 .get("/wallet/{id}/balance")
                 .then()
                 .statusCode(SC_OK)
-                .body("balance", notNullValue())
+                .body("balance", is(ONE_CENT.floatValue()))
                 .body("updatedAt", notNullValue());
     }
 
     @Test
-    void shouldReturnBadRequestForNilUUID() {
+    void shouldReturnHistoricalBalanceForWallet() {
         given()
                 .when()
-                .pathParam("id", NIL_UUID)
-                .get("/wallet/{id}/balance")
+                .pathParam("id", TEST_UUID_1)
+                .queryParam("at", toIsoString(TEST_MAX_DATE))
+                .get("/wallet/{id}/historical-balance")
                 .then()
-                .statusCode(SC_BAD_REQUEST)
-                .body("message", containsString(WalletNotFoundException.MESSAGE));
+                .statusCode(SC_OK)
+                .body("balance", is(ONE_CENT.floatValue()))
+                .body("at", is(toIsoString(TEST_MAX_DATE)));
+    }
+
+    @Test
+    void shouldIncreaseBalanceOnDeposit() {
+        given()
+                .contentType(APPLICATION_JSON)
+                .body(new DepositRequest(TEST_UUID_2, ONE_CENT))
+                .when()
+                .post("/wallet/deposit")
+                .then()
+                .statusCode(SC_OK);
+    }
+
+    @Test
+    void shouldDecreaseBalanceOnWithdraw() {
+        given()
+                .contentType(APPLICATION_JSON)
+                .body(new WithdrawRequest(TEST_UUID_2, ONE_CENT))
+                .when()
+                .post("/wallet/withdraw")
+                .then()
+                .statusCode(SC_OK);
+    }
+
+    @Test
+    void shouldIncreaseBalanceOnTransfer() {
+        given()
+                .contentType(APPLICATION_JSON)
+                .body(new TransferRequest(TEST_UUID_2, TEST_UUID_3, ONE_CENT))
+                .when()
+                .post("/wallet/transfer")
+                .then()
+                .statusCode(SC_OK);
     }
 }
