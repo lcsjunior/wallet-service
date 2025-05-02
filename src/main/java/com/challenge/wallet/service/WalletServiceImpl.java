@@ -11,7 +11,9 @@ import com.challenge.wallet.dto.TransferRequest;
 import com.challenge.wallet.dto.WithdrawRequest;
 import com.challenge.wallet.exception.InsufficientAmountException;
 import com.challenge.wallet.exception.InsufficientFundsException;
+import com.challenge.wallet.exception.InvalidDecimalScaleException;
 import com.challenge.wallet.exception.SameWalletTransferException;
+import com.challenge.wallet.exception.WalletNotFoundException;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
@@ -41,7 +43,7 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     public BalanceResponse getBalance(UUID walletId) {
-        Wallet wallet = walletRepository.getWallet(walletId);
+        Wallet wallet = getWallet(walletId);
         return BalanceResponse.from(wallet);
     }
 
@@ -58,7 +60,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal amount = request.amount();
         validateAmount(amount);
 
-        Wallet wallet = walletRepository.getWallet(request.walletId());
+        Wallet wallet = getWallet(request.walletId());
         credit(wallet, amount);
         transactionService.createTransaction(wallet, amount, TransactionType.CREDIT);
     }
@@ -69,7 +71,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal amount = request.amount();
         validateAmount(amount);
 
-        Wallet wallet = walletRepository.getWallet(request.walletId());
+        Wallet wallet = getWallet(request.walletId());
         debit(wallet, amount);
         transactionService.createTransaction(wallet, amount, TransactionType.DEBIT);
     }
@@ -83,8 +85,8 @@ public class WalletServiceImpl implements WalletService {
         if (request.fromWalletId().equals(request.toWalletId())) {
             throw new SameWalletTransferException();
         }
-        Wallet walletFrom = walletRepository.getWallet(request.fromWalletId());
-        Wallet walletTo = walletRepository.getWallet(request.toWalletId());
+        Wallet walletFrom = getWallet(request.fromWalletId());
+        Wallet walletTo = getWallet(request.toWalletId());
 
         debit(walletFrom, amount);
         Transaction transactionFrom = transactionService.createTransaction(walletFrom, amount, TransactionType.DEBIT);
@@ -107,6 +109,10 @@ public class WalletServiceImpl implements WalletService {
         walletRepository.save(wallet);
     }
 
+    private Wallet getWallet(UUID walletId) {
+        return walletRepository.getWallet(walletId).orElseThrow(WalletNotFoundException::new);
+    }
+
     private void checkWalletExists(UUID walletId) {
         walletRepository.getWallet(walletId);
     }
@@ -114,6 +120,9 @@ public class WalletServiceImpl implements WalletService {
     private void validateAmount(BigDecimal amount) {
         if (amount.compareTo(Constants.ONE_CENT) < 0) {
             throw new InsufficientAmountException();
+        }
+        if (amount.scale() > 2) {
+            throw new InvalidDecimalScaleException();
         }
     }
 }
