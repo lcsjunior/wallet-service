@@ -3,6 +3,7 @@ package com.challenge.wallet.service;
 import com.challenge.wallet.bean.HistoricalBalanceBean;
 import com.challenge.wallet.dto.HistoricalBalanceQuery;
 import com.challenge.wallet.exception.DatetimeFormatException;
+import com.challenge.wallet.model.OperationType;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
@@ -23,14 +24,9 @@ public class TransactionServiceImpl implements TransactionService {
     TransactionRepository transactionRepository;
 
     @Override
-    public Transaction createTransaction(Wallet wallet, BigDecimal amount, TransactionType type,
-                                         Transaction relatedTransaction) {
-        return transactionRepository.save(new Transaction(wallet, amount, type, relatedTransaction));
-    }
-
-    @Override
-    public Transaction createTransaction(Wallet wallet, BigDecimal amount, TransactionType type) {
-        return transactionRepository.save(new Transaction(wallet, amount, type, null));
+    public Transaction createTransaction(Wallet wallet, OperationType operation,
+                                         BigDecimal amount, TransactionType type, Transaction relatedTransaction) {
+        return transactionRepository.save(new Transaction(wallet, operation, amount, type, relatedTransaction));
     }
 
     @Override

@@ -10,9 +10,9 @@ public class TestConstants {
     public static final UUID TEST_UUID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
     public static final UUID TEST_UUID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
-    public static final LocalDateTime TEST_MAX_DATE = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+    public static final LocalDateTime TEST_MIN_DATE = LocalDateTime.of(1900, 1, 1, 0, 0, 1);
 
-    public static final UUID NIL_UUID = new UUID(0L, 0L);
+    public static final LocalDateTime TEST_MAX_DATE = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
     public static final BigDecimal INVALID_CURRENCY_SCALE = BigDecimal.valueOf(0.999);
 

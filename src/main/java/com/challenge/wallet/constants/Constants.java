@@ -1,8 +1,11 @@
 package com.challenge.wallet.constants;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public class Constants {
+
+    public static final UUID NIL_UUID = new UUID(0L, 0L);
 
     public static final BigDecimal ONE_CENT = BigDecimal.valueOf(0.01);
 

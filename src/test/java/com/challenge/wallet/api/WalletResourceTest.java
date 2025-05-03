@@ -9,10 +9,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static com.challenge.wallet.constants.Constants.ONE_CENT;
-import static com.challenge.wallet.constants.TestConstants.TEST_MAX_DATE;
+import static com.challenge.wallet.constants.TestConstants.TEST_MIN_DATE;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_1;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_2;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_3;
@@ -63,12 +64,12 @@ class WalletResourceTest {
         given()
                 .when()
                 .pathParam("id", TEST_UUID_1)
-                .queryParam("at", toIsoString(TEST_MAX_DATE))
+                .queryParam("at", toIsoString(TEST_MIN_DATE))
                 .get("/wallet/{id}/historical-balance")
                 .then()
                 .statusCode(SC_OK)
-                .body("balance", is(ONE_CENT.floatValue()))
-                .body("at", is(toIsoString(TEST_MAX_DATE)));
+                .body("balance", is(BigDecimal.ZERO.floatValue()))
+                .body("at", is(toIsoString(TEST_MIN_DATE)));
     }
 
     @Test
