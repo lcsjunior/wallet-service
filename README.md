@@ -42,7 +42,7 @@ cd wallet-service
 
 The service will start on `http://localhost:8081`
 
-#### Take a look at Swagger UI: http://localhost:8081/q/swagger-ui/
+➡️ Take a look at **Swagger UI**: http://localhost:8081/q/swagger-ui/
 
 ### 3. Running unit and integration tests
 ```bash
