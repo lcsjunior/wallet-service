@@ -71,10 +71,7 @@ class WalletResourceTest {
             depositFunds(walletOne.walletId(), ONE_CENT);
             transferFunds(walletOne.walletId(), walletTwo.walletId(), ONE_CENT);
             depositFunds(walletOne.walletId(), ONE_TRILLION);
-            BalanceResponse response = given()
-                    .when()
-                    .pathParam("id", walletOne.walletId())
-                    .get("/wallets/{id}/balance")
+            BalanceResponse response = retrieveBalance(walletOne.walletId())
                     .then()
                     .statusCode(SC_OK)
                     .extract()
@@ -89,10 +86,7 @@ class WalletResourceTest {
 
         @Test
         void shouldThrowWalletNotFoundException() {
-            given()
-                    .when()
-                    .pathParam("id", NIL_UUID)
-                    .get("/wallets/{id}/balance")
+            retrieveBalance(NIL_UUID)
                     .then()
                     .statusCode(SC_NOT_FOUND)
                     .body("message", containsString(MSG_ENTITY_NOT_FOUND.getMessage()));
@@ -177,6 +171,15 @@ class WalletResourceTest {
             withdrawFunds(walletOne.walletId(), ONE_CENT)
                     .then()
                     .statusCode(SC_OK);
+            BalanceResponse response = retrieveBalance(walletOne.walletId())
+                    .then()
+                    .statusCode(SC_OK)
+                    .extract()
+                    .as(BalanceResponse.class);
+            assertThat(response.balance())
+                    .isNotNull()
+                    .usingComparator(BigDecimal::compareTo)
+                    .isEqualTo(BigDecimal.ZERO);
         }
 
         @Test
@@ -225,6 +228,15 @@ class WalletResourceTest {
             depositFunds(walletOne.walletId(), ONE_TRILLION)
                     .then()
                     .statusCode(SC_OK);
+            BalanceResponse response = retrieveBalance(walletOne.walletId())
+                    .then()
+                    .statusCode(SC_OK)
+                    .extract()
+                    .as(BalanceResponse.class);
+            assertThat(response.balance())
+                    .isNotNull()
+                    .usingComparator(BigDecimal::compareTo)
+                    .isEqualTo(ONE_CENT.add(ONE_TRILLION));
         }
 
         @Test
@@ -261,6 +273,31 @@ class WalletResourceTest {
             transferFunds(walletOne.walletId(), walletTwo.walletId(), ONE_CENT)
                     .then()
                     .statusCode(SC_OK);
+            BalanceResponse response = retrieveBalance(walletOne.walletId())
+                    .then()
+                    .statusCode(SC_OK)
+                    .extract()
+                    .as(BalanceResponse.class);
+            assertThat(response.balance())
+                    .isNotNull()
+                    .usingComparator(BigDecimal::compareTo)
+                    .isEqualTo(BigDecimal.ZERO);
+        }
+
+        @Test
+        void shouldIncreaseBalance() {
+            transferFunds(walletOne.walletId(), walletTwo.walletId(), ONE_CENT)
+                    .then()
+                    .statusCode(SC_OK);
+            BalanceResponse response = retrieveBalance(walletTwo.walletId())
+                    .then()
+                    .statusCode(SC_OK)
+                    .extract()
+                    .as(BalanceResponse.class);
+            assertThat(response.balance())
+                    .isNotNull()
+                    .usingComparator(BigDecimal::compareTo)
+                    .isEqualTo(ONE_CENT.add(ONE_CENT));
         }
 
         @Test
@@ -347,5 +384,12 @@ class WalletResourceTest {
                 .body(new TransferRequest(fromWalletId, toWalletId, amount))
                 .when()
                 .post("/wallets/transfer");
+    }
+
+    private Response retrieveBalance(UUID walletId) {
+        return given()
+                .when()
+                .pathParam("id", walletId)
+                .get("/wallets/{id}/balance");
     }
 }

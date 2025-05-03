@@ -14,6 +14,7 @@ import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
 import com.challenge.wallet.repository.WalletRepository;
+import com.challenge.wallet.repository.WalletRepositoryImpl;
 import com.challenge.wallet.validator.WalletValidator;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -30,11 +31,13 @@ public class WalletServiceImpl implements WalletService {
 
     @Inject
     TransactionService transactionService;
+    @Inject
+    WalletRepositoryImpl walletRepositoryImpl;
 
     @Transactional
     @Override
     public CreateWalletResponse createWallet() {
-        Wallet wallet = saveWallet(new Wallet());
+        Wallet wallet = walletRepository.save(new Wallet());
         return CreateWalletResponse.from(wallet);
     }
 
@@ -55,24 +58,26 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public void deposit(DepositRequest request) {
         BigDecimal amount = request.amount();
+        WalletValidator.validateAvailableAmount(amount);
         Wallet wallet = retrieveWallet(request.walletId());
-        wallet.credit(amount);
 
         transactionService.createTransaction(
                 wallet, OperationType.CREDIT, amount, TransactionType.DEPOSIT, null);
-        saveWallet(wallet);
+        walletRepository.credit(wallet, amount);
     }
 
     @Transactional
     @Override
     public void withdraw(WithdrawRequest request) {
         BigDecimal amount = request.amount();
+        WalletValidator.validateAvailableAmount(amount);
+
         Wallet wallet = retrieveWallet(request.walletId());
-        wallet.debit(amount);
+        WalletValidator.validateAvailableBalance(wallet.getBalance(), amount);
 
         transactionService.createTransaction(
                 wallet, OperationType.DEBIT, amount, TransactionType.WITHDRAW, null);
-        saveWallet(wallet);
+        walletRepository.debit(wallet, amount);
     }
 
     @Transactional
@@ -81,22 +86,18 @@ public class WalletServiceImpl implements WalletService {
         WalletValidator.validateSameWallet(request.fromWalletId(), request.toWalletId());
 
         BigDecimal amount = request.amount();
-        Wallet walletFrom = retrieveWallet(request.fromWalletId());
-        Wallet walletTo = retrieveWallet(request.toWalletId());
+        WalletValidator.validateAvailableAmount(amount);
 
-        walletFrom.debit(amount);
-        walletTo.credit(amount);
+        Wallet walletFrom = retrieveWallet(request.fromWalletId());
+        WalletValidator.validateAvailableBalance(walletFrom.getBalance(), amount);
+        Wallet walletTo = retrieveWallet(request.toWalletId());
 
         Transaction relatedTransaction = transactionService.createTransaction(
                 walletFrom, OperationType.DEBIT, amount, TransactionType.TRANSFER, null);
         transactionService.createTransaction(
                 walletTo, OperationType.CREDIT, amount, TransactionType.TRANSFER, relatedTransaction);
-        saveWallet(walletFrom);
-        saveWallet(walletTo);
-    }
-
-    private Wallet saveWallet(Wallet wallet) {
-        return walletRepository.save(wallet);
+        walletRepository.debit(walletFrom, amount);
+        walletRepository.credit(walletTo, amount);
     }
 
     private Wallet retrieveWallet(UUID walletId) {

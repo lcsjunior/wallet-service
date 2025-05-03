@@ -28,17 +28,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public Transaction createTransaction(Wallet wallet, OperationType operation,
                                          BigDecimal amount, TransactionType type, Transaction relatedTransaction) {
-        return saveTransaction(new Transaction(wallet, operation, amount, type, relatedTransaction));
+        return transactionRepository.save(new Transaction(wallet, operation, amount, type, relatedTransaction));
     }
 
     @Override
     public HistoricalBalanceBean getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query) {
         LocalDateTime atDateTime = parseIsoDateTime(query.at());
         return transactionRepository.getHistoricalBalance(walletId, atDateTime);
-    }
-
-    private Transaction saveTransaction(Transaction transaction) {
-        return transactionRepository.save(transaction);
     }
 
     private LocalDateTime parseIsoDateTime(String dateTime) {
