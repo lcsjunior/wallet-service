@@ -2,6 +2,8 @@ package com.challenge.wallet.exception;
 
 import jakarta.ws.rs.core.Response;
 
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+
 public class ServiceException extends RuntimeException {
 
     private final Response.Status status;
@@ -11,20 +13,18 @@ public class ServiceException extends RuntimeException {
         this.status = status;
     }
 
+    public ServiceException(String message) {
+        super(message);
+        this.status = BAD_REQUEST;
+    }
+
     public Response.Status getStatus() {
         return status;
     }
 
-    public static class ErrorMessage {
-        private String message;
-        public String getMessage() {
-            return message;
-        }
-    }
+    public record ErrorMessage(String message) {}
 
     public ErrorMessage toErrorMessage() {
-        ErrorMessage errorMessage = new ErrorMessage();
-        errorMessage.message = this.getMessage();
-        return errorMessage;
+        return new ErrorMessage(this.getMessage());
     }
 }

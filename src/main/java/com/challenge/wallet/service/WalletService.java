@@ -14,9 +14,9 @@ public interface WalletService {
 
     CreateWalletResponse createWallet();
 
-    BalanceResponse getBalance(UUID walletId);
+    BalanceResponse retrieveBalance(UUID walletId);
 
-    HistoricalBalanceResponse getHistoricalBalance(UUID walletId, HistoricalBalanceQuery query);
+    HistoricalBalanceResponse retrieveHistoricalBalance(UUID walletId, HistoricalBalanceQuery query);
 
     void deposit(DepositRequest depositRequest);
 

@@ -1,5 +1,6 @@
 package com.challenge.wallet.model;
 
+import com.challenge.wallet.validator.WalletValidator;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,11 +22,11 @@ public class Wallet {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false)
-    private BigDecimal balance = BigDecimal.ZERO;
-
     @Column(name = "user_id", nullable = false)
-    private UUID userId = NIL_UUID; // FIXME
+    private UUID userId = NIL_UUID; // FIXME: assign correct user ID when creating wallet
+
+    @Column(name = "balance", nullable = false)
+    private BigDecimal balance = BigDecimal.ZERO;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -46,11 +47,18 @@ public class Wallet {
         return balance;
     }
 
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void credit(BigDecimal amount) {
+        WalletValidator.validateAvailableAmount(amount);
+        this.balance = this.balance.add(amount);
+    }
+
+    public void debit(BigDecimal amount) {
+        WalletValidator.validateAvailableAmount(amount);
+        WalletValidator.validateAvailableBalance(this.balance, amount);
+        this.balance = this.balance.subtract(amount);
     }
 }

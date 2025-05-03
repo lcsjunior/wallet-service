@@ -9,5 +9,5 @@ public interface WalletRepository {
 
     Wallet save(Wallet wallet);
 
-    Optional<Wallet> getWallet(UUID walletId);
+    Optional<Wallet> retrieveWallet(UUID walletId);
 }

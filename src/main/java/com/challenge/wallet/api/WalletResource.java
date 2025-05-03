@@ -40,17 +40,17 @@ public class WalletResource {
     @Path("/{id}/balance")
     @Produces(APPLICATION_JSON)
     @Operation(summary = "Get current wallet balance")
-    public Response getBalance(@PathParam("id") UUID walletId) {
-        return Response.ok(walletService.getBalance(walletId)).build();
+    public Response retrieveBalance(@PathParam("id") UUID walletId) {
+        return Response.ok(walletService.retrieveBalance(walletId)).build();
     }
 
     @GET
     @Path("/{id}/historical-balance")
     @Produces(APPLICATION_JSON)
     @Operation(summary = "Get historical balance at specific time")
-    public Response getHistoricalBalance(@PathParam("id") UUID walletId,
-                                         @Valid @BeanParam HistoricalBalanceQuery query) {
-        return Response.ok(walletService.getHistoricalBalance(walletId, query)).build();
+    public Response retrieveHistoricalBalance(@PathParam("id") UUID walletId,
+                                              @Valid @BeanParam HistoricalBalanceQuery query) {
+        return Response.ok(walletService.retrieveHistoricalBalance(walletId, query)).build();
     }
 
     @POST

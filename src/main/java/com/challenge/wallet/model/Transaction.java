@@ -23,24 +23,24 @@ public class Transaction {
     @GeneratedValue
     private UUID id;
 
-    @JoinColumn(nullable = false)
+    @CreationTimestamp
+    @Column(name = "timestamp", updatable = false)
+    private LocalDateTime timestamp;
+
     @ManyToOne
+    @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "operation_type", nullable = false)
     private OperationType operation;
 
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false)
     private TransactionType type;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
 
     @OneToOne
     @JoinColumn(name = "related_transaction_id")

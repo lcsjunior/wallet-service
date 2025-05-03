@@ -40,9 +40,9 @@ cd wallet-service
 ./mvnw quarkus:dev
 ```
 
-The service will start on `http://localhost:8081`
+The service will start on `http://localhost:8080`
 
-➡️ Take a look at **Swagger UI**: http://localhost:8081/q/swagger-ui/
+➡️ Take a look at **Swagger UI**: http://localhost:8080/q/swagger-ui/
 
 ### 3. Running unit and integration tests
 ```bash

@@ -17,7 +17,7 @@ public class WalletRepositoryImpl implements WalletRepository, PanacheRepository
     }
 
     @Override
-    public Optional<Wallet> getWallet(UUID walletId) {
+    public Optional<Wallet> retrieveWallet(UUID walletId) {
         return this.findByIdOptional(walletId);
     }
 }
