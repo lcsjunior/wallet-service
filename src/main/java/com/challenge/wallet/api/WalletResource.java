@@ -22,7 +22,7 @@ import java.util.UUID;
 import static jakarta.ws.rs.core.MediaType.APPLICATION_JSON;
 import static jakarta.ws.rs.core.Response.Status.CREATED;
 
-@Path("/wallet")
+@Path("/wallets")
 @Tag(name = "Wallet Service Assignment")
 public class WalletResource {
 
@@ -31,7 +31,7 @@ public class WalletResource {
 
     @POST
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Create a new wallet")
+    @Operation(summary = " Allow the creation of wallets for users")
     public Response createWallet() {
         return Response.status(CREATED).entity(walletService.createWallet()).build();
     }
@@ -39,7 +39,7 @@ public class WalletResource {
     @GET
     @Path("/{id}/balance")
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Get the balance of a wallet")
+    @Operation(summary = "Retrieve the current balance of a wallet")
     public Response getBalance(@PathParam("id") UUID walletId) {
         return Response.ok(walletService.getBalance(walletId)).build();
     }
@@ -47,7 +47,7 @@ public class WalletResource {
     @GET
     @Path("/{id}/historical-balance")
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Get the historical balance of a wallet")
+    @Operation(summary = "Retrieve the balance of a wallet at a specific point in the past")
     public Response getHistoricalBalance(@PathParam("id") UUID walletId,
                                          @Valid @BeanParam HistoricalBalanceQuery query) {
         return Response.ok(walletService.getHistoricalBalance(walletId, query)).build();
@@ -56,7 +56,7 @@ public class WalletResource {
     @POST
     @Path("/deposit")
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Deposit funds into a wallet")
+    @Operation(summary = "Enable users to deposit money into their wallets")
     public Response deposit(@Valid DepositRequest depositRequest) {
         walletService.deposit(depositRequest);
         return Response.ok().build();
@@ -65,7 +65,7 @@ public class WalletResource {
     @POST
     @Path("/withdraw")
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Withdraw funds from a wallet")
+    @Operation(summary = "Enable users to withdraw money from their wallets")
     public Response withdraw(@Valid WithdrawRequest depositWithdraw) {
         walletService.withdraw(depositWithdraw);
         return Response.ok().build();
@@ -74,7 +74,7 @@ public class WalletResource {
     @POST
     @Path("/transfer")
     @Produces(APPLICATION_JSON)
-    @Operation(summary = "Transfer funds between wallets")
+    @Operation(summary = "Facilitate the transfer of money between user wallets")
     public Response transfer(@Valid TransferRequest transferWithdraw) {
         walletService.transfer(transferWithdraw);
         return Response.ok().build();

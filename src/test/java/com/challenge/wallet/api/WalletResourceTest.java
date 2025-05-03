@@ -37,7 +37,7 @@ class WalletResourceTest {
     void shouldCreateWalletSuccessfully() {
         CreateWalletResponse response =
                 given()
-                        .when().post("/wallet")
+                        .when().post("/wallets")
                         .then()
                         .statusCode(SC_CREATED)
                         .extract()
@@ -52,7 +52,7 @@ class WalletResourceTest {
         given()
                 .when()
                 .pathParam("id", TEST_UUID_1)
-                .get("/wallet/{id}/balance")
+                .get("/wallets/{id}/balance")
                 .then()
                 .statusCode(SC_OK)
                 .body("balance", is(ONE_CENT.floatValue()))
@@ -65,7 +65,7 @@ class WalletResourceTest {
                 .when()
                 .pathParam("id", TEST_UUID_1)
                 .queryParam("at", toIsoString(TEST_MIN_DATE))
-                .get("/wallet/{id}/historical-balance")
+                .get("/wallets/{id}/historical-balance")
                 .then()
                 .statusCode(SC_OK)
                 .body("balance", is(BigDecimal.ZERO.floatValue()))
@@ -78,7 +78,7 @@ class WalletResourceTest {
                 .contentType(APPLICATION_JSON)
                 .body(new DepositRequest(TEST_UUID_2, ONE_CENT))
                 .when()
-                .post("/wallet/deposit")
+                .post("/wallets/deposit")
                 .then()
                 .statusCode(SC_OK);
     }
@@ -89,7 +89,7 @@ class WalletResourceTest {
                 .contentType(APPLICATION_JSON)
                 .body(new WithdrawRequest(TEST_UUID_2, ONE_CENT))
                 .when()
-                .post("/wallet/withdraw")
+                .post("/wallets/withdraw")
                 .then()
                 .statusCode(SC_OK);
     }
@@ -100,7 +100,7 @@ class WalletResourceTest {
                 .contentType(APPLICATION_JSON)
                 .body(new TransferRequest(TEST_UUID_2, TEST_UUID_3, ONE_CENT))
                 .when()
-                .post("/wallet/transfer")
+                .post("/wallets/transfer")
                 .then()
                 .statusCode(SC_OK);
     }
