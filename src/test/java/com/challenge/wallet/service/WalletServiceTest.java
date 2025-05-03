@@ -13,7 +13,7 @@ import com.challenge.wallet.exception.InsufficientFundsException;
 import com.challenge.wallet.exception.DecimalScaleException;
 import com.challenge.wallet.exception.SameWalletException;
 import com.challenge.wallet.exception.WalletNotFoundException;
-import com.challenge.wallet.model.Transaction;
+import com.challenge.wallet.model.OperationType;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
 import com.challenge.wallet.repository.WalletRepository;
@@ -27,10 +27,10 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.challenge.wallet.constants.Constants.NIL_UUID;
 import static com.challenge.wallet.constants.Constants.ONE_CENT;
 import static com.challenge.wallet.constants.Constants.ONE_TRILLION;
 import static com.challenge.wallet.constants.TestConstants.INVALID_CURRENCY_SCALE;
-import static com.challenge.wallet.constants.TestConstants.NIL_UUID;
 import static com.challenge.wallet.constants.TestConstants.TEST_MAX_DATE;
 import static com.challenge.wallet.constants.TestConstants.TEST_UUID_3;
 import static com.challenge.wallet.factory.WalletTestFactory.createHistoricalBalanceQuery;
@@ -56,8 +56,6 @@ class WalletServiceTest {
     TransactionService transactionService;
 
     private static Wallet walletMock = mock(Wallet.class);
-
-    private static Transaction transactionMock = mock(Transaction.class);
 
     private static HistoricalBalanceBean historicalBalanceBeanMock = mock(HistoricalBalanceBean.class);
 
@@ -144,8 +142,8 @@ class WalletServiceTest {
                 .isEqualByComparingTo(ONE_TRILLION);
         verify(walletRepository, times(1)).getWallet(any(UUID.class));
         verify(transactionService, times(1))
-                .createTransaction(any(Wallet.class),
-                        any(BigDecimal.class), any(TransactionType.class));
+                .createTransaction(any(Wallet.class), any(OperationType.class),
+                        any(BigDecimal.class), any(TransactionType.class), any());
     }
 
     @Test
@@ -186,8 +184,8 @@ class WalletServiceTest {
                 .isEqualByComparingTo(BigDecimal.ZERO);
         verify(walletRepository, times(4)).getWallet(any(UUID.class));
         verify(transactionService, times(4))
-                .createTransaction(any(Wallet.class),
-                        any(BigDecimal.class), any(TransactionType.class));
+                .createTransaction(any(Wallet.class), any(OperationType.class),
+                        any(BigDecimal.class), any(TransactionType.class), any());
     }
 
     @Test
@@ -225,19 +223,14 @@ class WalletServiceTest {
     void shouldIncreaseBalanceOnTransfer() {
         Wallet wallet = createWallet();
         when(walletRepository.getWallet(any(UUID.class))).thenReturn(Optional.of(wallet));
-        when(transactionService.createTransaction(any(Wallet.class), any(BigDecimal.class),
-                any(TransactionType.class))).thenReturn(transactionMock);
         walletService.deposit(new DepositRequest(NIL_UUID, ONE_TRILLION));
         walletService.transfer(new TransferRequest(NIL_UUID, TEST_UUID_3, ONE_TRILLION));
         assertThat(wallet.getBalance())
                 .isNotNull()
                 .isEqualByComparingTo(ONE_TRILLION);
         verify(walletRepository, times(3)).getWallet(any(UUID.class));
-        verify(transactionService, times(2))
-                .createTransaction(any(Wallet.class),
-                        any(BigDecimal.class), any(TransactionType.class));
-        verify(transactionService, times(1))
-                .createTransaction(any(Wallet.class), any(BigDecimal.class),
-                        any(TransactionType.class), any(Transaction.class));
+        verify(transactionService, times(3))
+                .createTransaction(any(Wallet.class), any(OperationType.class),
+                        any(BigDecimal.class), any(TransactionType.class), any());
     }
 }

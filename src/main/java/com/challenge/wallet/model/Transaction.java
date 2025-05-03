@@ -22,13 +22,19 @@ public class Transaction {
     @GeneratedValue
     private UUID id;
 
+    @JoinColumn(nullable = false)
     @ManyToOne
     private Wallet wallet;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operation_type", nullable = false)
+    private OperationType operation;
+
+    @Column(nullable = false)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "transaction_type")
+    @Column(name = "transaction_type", nullable = false)
     private TransactionType type;
 
     @CreationTimestamp
@@ -42,9 +48,10 @@ public class Transaction {
     @Version
     private Long version;
 
-    public Transaction(Wallet wallet, BigDecimal amount, TransactionType type,
-                       Transaction relatedTransaction) {
+    public Transaction(Wallet wallet, OperationType operation, BigDecimal amount,
+                       TransactionType type, Transaction relatedTransaction) {
         this.wallet = wallet;
+        this.operation = operation;
         this.amount = amount;
         this.type = type;
         this.relatedTransaction = relatedTransaction;

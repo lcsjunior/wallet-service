@@ -12,6 +12,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static com.challenge.wallet.constants.Constants.NIL_UUID;
+
 @Entity
 public class Wallet {
 
@@ -20,6 +22,9 @@ public class Wallet {
     private UUID id;
 
     private BigDecimal balance = BigDecimal.ZERO;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID userId = NIL_UUID; // FIXME
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

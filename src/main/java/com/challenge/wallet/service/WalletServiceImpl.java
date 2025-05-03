@@ -14,6 +14,7 @@ import com.challenge.wallet.exception.InsufficientFundsException;
 import com.challenge.wallet.exception.DecimalScaleException;
 import com.challenge.wallet.exception.SameWalletException;
 import com.challenge.wallet.exception.WalletNotFoundException;
+import com.challenge.wallet.model.OperationType;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
 import com.challenge.wallet.model.Wallet;
@@ -63,8 +64,7 @@ public class WalletServiceImpl implements WalletService {
         validatePaymentAmount(amount);
 
         Wallet wallet = getWallet(request.walletId());
-        credit(wallet, amount);
-        transactionService.createTransaction(wallet, amount, TransactionType.CREDIT);
+        credit(wallet, amount, TransactionType.DEPOSIT, null);
     }
 
     @Transactional
@@ -74,8 +74,7 @@ public class WalletServiceImpl implements WalletService {
         validatePaymentAmount(amount);
 
         Wallet wallet = getWallet(request.walletId());
-        debit(wallet, amount);
-        transactionService.createTransaction(wallet, amount, TransactionType.DEBIT);
+        debit(wallet, amount, TransactionType.WITHDRAW);
     }
 
     @Transactional
@@ -90,21 +89,24 @@ public class WalletServiceImpl implements WalletService {
         validateAvailableBalance(walletFrom.getBalance(), amount);
         Wallet walletTo = getWallet(request.toWalletId());
 
-        debit(walletFrom, amount);
-        credit(walletTo, amount);
-        Transaction transactionFrom = transactionService.createTransaction(walletFrom, amount, TransactionType.DEBIT);
-        transactionService.createTransaction(walletTo, amount, TransactionType.CREDIT, transactionFrom);
+        Transaction relatedTransaction = debit(walletFrom, amount, TransactionType.TRANSFER);
+        credit(walletTo, amount, TransactionType.TRANSFER, relatedTransaction);
     }
 
-    private void debit(Wallet wallet, BigDecimal amount) {
+    private Transaction debit(Wallet wallet, BigDecimal amount, TransactionType transactionType) {
         validateAvailableBalance(wallet.getBalance(), amount);
         wallet.setBalance(wallet.getBalance().subtract(amount));
         walletRepository.save(wallet);
+        return transactionService.createTransaction(
+                wallet, OperationType.DEBIT, amount, transactionType, null);
     }
 
-    private void credit(Wallet wallet, BigDecimal amount) {
+    private void credit(Wallet wallet, BigDecimal amount, TransactionType transactionType,
+                        Transaction relatedTransaction) {
         wallet.setBalance(wallet.getBalance().add(amount));
         walletRepository.save(wallet);
+        transactionService.createTransaction(
+                wallet, OperationType.CREDIT, amount, transactionType, relatedTransaction);
     }
 
     private Wallet getWallet(UUID walletId) {

@@ -13,7 +13,7 @@ public class TransactionRepositoryImpl implements TransactionRepository, Panache
 
     private static final String HISTORICAL_BALANCE_HQL = """
             select new com.challenge.wallet.bean.HistoricalBalanceBean(
-              coalesce(sum(case when type = 'DEBIT' then -amount else amount end), 0)
+              coalesce(sum(case when operation = 'DEBIT' then -amount else amount end), 0)
               ,:at
             )
             from Transaction
