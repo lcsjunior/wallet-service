@@ -21,6 +21,7 @@ public class Wallet {
     @GeneratedValue
     private UUID id;
 
+    @Column(nullable = false)
     private BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "user_id", nullable = false)
