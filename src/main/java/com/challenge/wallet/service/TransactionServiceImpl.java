@@ -2,7 +2,7 @@ package com.challenge.wallet.service;
 
 import com.challenge.wallet.bean.HistoricalBalanceBean;
 import com.challenge.wallet.dto.HistoricalBalanceQuery;
-import com.challenge.wallet.exception.DatetimeFormatException;
+import com.challenge.wallet.exception.ServiceException;
 import com.challenge.wallet.model.OperationType;
 import com.challenge.wallet.model.Transaction;
 import com.challenge.wallet.model.TransactionType;
@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.UUID;
+
+import static com.challenge.wallet.constants.ValidationMessages.MSG_INVALID_DATETIME_FORMAT;
 
 @ApplicationScoped
 public class TransactionServiceImpl implements TransactionService {
@@ -39,7 +41,7 @@ public class TransactionServiceImpl implements TransactionService {
         try {
             return LocalDateTime.parse(dateTime, DateTimeFormatter.ISO_DATE_TIME);
         } catch (DateTimeParseException e) {
-            throw new DatetimeFormatException();
+            throw new ServiceException(MSG_INVALID_DATETIME_FORMAT.getMessage());
         }
     }
 }

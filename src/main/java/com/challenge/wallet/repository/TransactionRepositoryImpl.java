@@ -18,7 +18,7 @@ public class TransactionRepositoryImpl implements TransactionRepository, Panache
             )
             from Transaction
             where wallet.id = :walletId
-            and createdAt <= :at
+            and timestamp <= :at
             """;
 
     @Override

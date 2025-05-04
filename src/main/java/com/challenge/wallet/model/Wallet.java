@@ -21,10 +21,11 @@ public class Wallet {
     @GeneratedValue
     private UUID id;
 
-    private BigDecimal balance = BigDecimal.ZERO;
-
     @Column(name = "user_id", nullable = false)
-    private UUID userId = NIL_UUID; // FIXME
+    private UUID userId = NIL_UUID; // FIXME: assign correct user ID when creating wallet
+
+    @Column(name = "balance", nullable = false)
+    private BigDecimal balance = BigDecimal.ZERO;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -43,10 +44,6 @@ public class Wallet {
 
     public BigDecimal getBalance() {
         return balance;
-    }
-
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
     }
 
     public LocalDateTime getUpdatedAt() {
