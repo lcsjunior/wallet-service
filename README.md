@@ -8,22 +8,22 @@ A microservice responsible for managing user wallets. It supports operations suc
 
 ## Features
 
-- ✅ Create wallets
-- ✅ Deposit and withdraw funds
-- ✅ Transfer funds between wallets
-- ✅ Retrieve current and historical balances
-- ✅ Full operation traceability for audit compliance
+- [x] Create wallets
+- [x] Deposit and withdraw funds
+- [x] Transfer funds between wallets
+- [x] Retrieve current and historical balances
+- [x] Full operation traceability for audit compliance
 
 ---
 
 ## Tech Stack
 
-- Java 17
-- Quarkus Framework
-- Hibernate ORM and Panache
-- H2 Database
-- JUnit 5, Mockito and AssertJ
-- REST API, OpenAPI and Swagger
+- [x] Java 17
+- [x] Quarkus Framework
+- [x] Hibernate ORM and Panache
+- [x] H2 Database
+- [x] JUnit 5, Mockito and AssertJ
+- [x] REST API, OpenAPI and Swagger
 
 ---
 
@@ -42,7 +42,7 @@ cd wallet-service
 
 The service will start on `http://localhost:8080`
 
-➡️ Take a look at **Swagger UI**: http://localhost:8080/q/swagger-ui/
+**Swagger UI available at:** http://localhost:8080/q/swagger-ui/
 
 ### 3. Running unit and integration tests
 ```bash
@@ -68,15 +68,23 @@ The service will start on `http://localhost:8080`
 
 ## Design Decisions
 
-- **Traceability**: Each transaction is persisted with timestamp, operation type, and amount, ensuring a complete audit trail.
-- **Separation of concerns**: Wallets and transactions are modeled independently, enabling clear domain boundaries and easier testing.
-- **In-memory H2 DB**: Used to simplify setup and ensure fast feedback during testing.
+- **Scalability**: Quarkus was chosen for its native compatibility with Kubernetes and Serverless, offering fast initialization and efficient resource consumption.
+- **Availability**: Independent microservice with fault isolation, ensuring resilience and high availability.
+- **Traceability**: Each transaction is persisted in the Transaction table, containing timestamp, wallet, amount, operation type, and related transaction, facilitating auditing and diagnostics.
+- **Testability**: Extensive automated test coverage, covering core business rules, transaction validations, and error scenarios (such as insufficient balance).
+- **Integrity**: Ensured with ACID transactions, concurrency control with @Version (optimistic locking), and balance update via native SQL to avoid race conditions and consistency.
 
 ---
 
 ## Trade-offs
 
-- **Traceability**: Each transaction is persisted with timestamp, operation type, and amount, ensuring a complete audit trail.
-- **Separation of concerns**: Wallets and transactions are modeled independently, enabling clear domain boundaries and easier testing.
-- **In-memory H2 DB**: Used to simplify setup and ensure fast feedback during testing.
+- **Idempotency of operations**: Idempotency is not implemented, which may cause issues with retries. It is planned for future evolution.
+- **User-wallet relationship**: The wallet has a userId field, but the relationship has not been implemented. Currently, the userId field is stored as NIL_UUID.
+- **Use of H2 in environments**: H2 is used for testing, with migration to PostgreSQL planned for production and staging environments.
+- **Test coverage**: Focus on functional tests; unit, performance, and security test coverage needs to be expanded.
+- **Code quality with SonarQube**: The project uses Jacoco for code coverage analysis, but improvements in code quality metrics will be explored in the future.
+- **Authentication and authorization**: Authentication and authorization have not been implemented. The plan is to use Cognito for these features in the future.
+- **CI/CD with GitHub Actions**: The pipeline could not be implemented due to time constraints, but it is planned for future implementation.
+- **Logs and observability**: Logs have been improved with OpenTelemetry, but coverage and visibility need to be expanded.
+- **Messaging**: There is no messaging system in place at the moment, but it will be evaluated based on scalability and decoupling needs.
 
