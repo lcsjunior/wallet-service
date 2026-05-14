@@ -1,8 +1,0 @@
-services:
-  api:
-    container_name: mywallet
-    image: mywallet:latest
-    build:
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
