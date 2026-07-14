@@ -23,8 +23,8 @@ docker compose up --build
 
 ## Architecture
 
-Spring Boot 3.5.14 REST service, Java 17, packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
+Spring Boot 3.5.16 REST service, Java 21, packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
 
 The service is in its early stages: only the `@SpringBootApplication` entry point exists so far. New code should be placed under `src/main/java/com/example/wallet_service/` following standard Spring layering (controller → service → repository).
 
-The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-SNAPSHOT.jar`) using `eclipse-temurin:17-jre-alpine`. Run `./mvnw clean package` before `docker compose up`.
+The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-SNAPSHOT.jar`) using `eclipse-temurin:21-jre-alpine`. Run `./mvnw clean package` before `docker compose up`.
