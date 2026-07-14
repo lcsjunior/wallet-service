@@ -90,3 +90,7 @@ Full request/response contract: `specs/001-wallet-core-operations/contracts/wall
 ## Time Spent
 
 *(fill in your own rough estimate of hours invested before submitting, as requested by the assignment)*
+
+## TODO
+
+- [ ] Add pagination support for transaction history endpoints

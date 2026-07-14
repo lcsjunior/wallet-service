@@ -35,6 +35,7 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 - Every controller must have an integration test (`@WebMvcTest` or `@SpringBootTest`)
 - Integration test classes MUST be suffixed `IntegrationTest` (e.g., `WalletControllerIntegrationTest`); unit test classes MUST be suffixed `Test` (e.g., `WalletServiceTest`)
 - Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, true)`) — no extra or missing fields allowed
+- Expected/mock JSON payloads used in integration tests MUST be created in dedicated `.json` files under `src/test/resources/mock/json/`, never as inline Java string literals
 - Unit tests (service layer) MUST use Mockito (`@Mock`/`@InjectMocks` or `Mockito.mock`) to isolate the unit under test from its collaborators (repositories, other services)
 - Unit tests MUST call `Mockito.verify(...)` whenever the test's purpose is to confirm a collaborator was (or was not) invoked with specific arguments — e.g., confirming a repository save happened exactly once, or that a second call with the same `correlationId` never reaches the persistence layer. Skip `verify()` only when the assertion is purely on the returned value/state and no interaction needs confirming.
 
@@ -50,3 +51,10 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 ## Docker
 
 The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-SNAPSHOT.jar`) using `eclipse-temurin:21-jre-alpine`. Run `./mvnw clean package` before `docker compose up`.
+
+## Project documentation
+
+- `README.md`, `CLAUDE.md`, and `AGENTS.md` must always be kept up to date.
+- Whenever a change affects architecture, conventions, hardware wiring, dependencies,
+  or any information already documented in these files, update them in the same
+  change set.
