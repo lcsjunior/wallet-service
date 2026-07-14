@@ -30,3 +30,8 @@ Database: H2 relational (embedded). Schema must support full audit traceability.
 Idempotency: mutation endpoints (deposit, withdraw, transfer) use a `correlationId` header so retries are safe.
 
 > Code conventions (package naming, layering, DTOs, testing, Docker build) are defined in `.claude/rules/code-conventions.md`.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
