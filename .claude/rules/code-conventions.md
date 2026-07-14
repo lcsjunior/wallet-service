@@ -1,9 +1,5 @@
 # Code Conventions
 
-## Package Naming
-
-Packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
-
 ## Architecture
 
 - Layered MVC: controller → service → repository
@@ -23,10 +19,19 @@ src/main/java/com/example/wallet_service/
 └── WalletServiceApplication.java
 ```
 
+## Package Naming
+
+Packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
+
 ## Testing
 
 - Every controller must have an integration test (`@WebMvcTest` or `@SpringBootTest`)
 - Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, true)`) — no extra or missing fields allowed
+
+### Method Naming
+
+- Every test method name must start with `should` (e.g., `shouldReturnBalanceWhenWalletExists`)
+- Every test method must be annotated with `@DisplayName` describing the scenario
 
 ## Docker
 
