@@ -1,3 +1,4 @@
 #!/bin/sh
+staged=$(git diff --cached --name-only --diff-filter=ACM -- '*.java')
 ./mvnw spotless:apply
-git diff --name-only --diff-filter=ACM | grep '\.java$' | xargs -r git add
+echo "$staged" | xargs -r git add
