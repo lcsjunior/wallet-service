@@ -54,6 +54,7 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 ## Control Flow
 
 - Prefer early returns (guard clauses) over nested conditionals — return/throw as soon as a precondition fails instead of wrapping the remaining logic in an `else` block.
+- Prefer method references over lambdas whenever possible (e.g., `list.forEach(this::process)` over `list.forEach(item -> process(item))`).
 
 ## Logging
 
