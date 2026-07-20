@@ -26,8 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class TransactionService {
@@ -272,24 +270,9 @@ public class TransactionService {
       var body = objectMapper.writeValueAsString(response);
       var entry = IdempotencyEntry.of(correlationId, operationType, fingerprint, body);
       idempotencyEntryRepository.save(entry);
-      registerCacheWriteAfterCommit(entry);
     } catch (JsonProcessingException ex) {
       throw new IllegalStateException(
           "Failed to serialize idempotency entry for " + correlationId, ex);
     }
-  }
-
-  private void registerCacheWriteAfterCommit(IdempotencyEntry entry) {
-    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-      idempotencyEntryRepository.cache(entry);
-      return;
-    }
-    TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-          @Override
-          public void afterCommit() {
-            idempotencyEntryRepository.cache(entry);
-          }
-        });
   }
 }

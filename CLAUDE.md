@@ -38,5 +38,5 @@ Idempotency: mutation endpoints (deposit, withdraw, transfer) use a `correlation
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/002-remove-unit-tests/plan.md`
+`specs/003-idempotency-cache-simplification/plan.md`
 <!-- SPECKIT END -->

@@ -53,6 +53,12 @@ Packaged as `com.example.wallet`.
 - Values with more than 2 decimal places (e.g., `0.015`) MUST be rejected as a validation error at the system boundary (DTO validation) — never silently rounded or truncated to 2 places.
 - Amount fields on request DTOs (deposit/withdrawal/transfer) MUST be strictly positive (e.g., Bean Validation `@Positive`); zero and negative values MUST be rejected as a validation error at the DTO boundary, never reaching the service layer. Sign of the effect on balance comes from the operation type, not from the stored value.
 
+## Caching
+
+- Caching MUST be implemented exclusively via `@Cacheable` — `@CachePut`, `@CacheEvict`, and manual `CacheManager`/`Cache` API usage are prohibited. Service classes MUST NOT contain any cache-specific code (no manual cache population, no cache-key handling); services only call the repository's `find`/`save` methods, and caching happens as a side effect of `@Cacheable` on the repository.
+- A `@Cacheable` method MUST NOT cache a missing/absent result — apply `unless = "#result == null"` (Spring unwraps `Optional`-returning methods before evaluating `unless`, so `#result` is the unwrapped value, never the `Optional` itself).
+- All cache configuration (cache names' backing settings, TTL, provider setup) MUST live in `src/main/resources/application.properties` and/or `src/test/resources/application*.properties` — never hard-coded in Java classes.
+
 ## Method Naming
 
 - Method names MUST be objective, short, and free of abbreviations — this applies to production code and test code alike
