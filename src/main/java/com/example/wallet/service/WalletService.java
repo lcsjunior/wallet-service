@@ -38,14 +38,14 @@ public class WalletService {
   }
 
   @Transactional(readOnly = true)
-  public Wallet findByIdOrThrow(UUID walletId) {
-    return walletRepository.findById(walletId).orElseThrow(() -> walletNotFoundException(walletId));
-  }
-
-  @Transactional(readOnly = true)
   public BalanceResponse getCurrentBalance(UUID walletId) {
     var wallet = findByIdOrThrow(walletId);
     return new BalanceResponse(wallet.getId(), wallet.getBalance());
+  }
+
+  @Transactional(readOnly = true)
+  public Wallet findByIdOrThrow(UUID walletId) {
+    return walletRepository.findById(walletId).orElseThrow(() -> walletNotFoundException(walletId));
   }
 
   private ServiceException walletNotFoundException(UUID walletId) {

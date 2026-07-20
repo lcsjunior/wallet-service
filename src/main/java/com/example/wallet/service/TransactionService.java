@@ -52,8 +52,9 @@ public class TransactionService {
 
   @Transactional
   public TransactionResponse deposit(UUID walletId, BigDecimal amount, String correlationId) {
-    var normalizedAmount = normalize(amount);
-    var fingerprint = fingerprint(OperationType.DEPOSIT, walletId.toString(), normalizedAmount);
+    var normalizedAmount = normalizeScale(amount);
+    var fingerprint =
+        buildFingerprint(OperationType.DEPOSIT, walletId.toString(), normalizedAmount);
 
     var existingResponse = replayIfIdempotent(correlationId, fingerprint);
     if (existingResponse.isPresent()) {
@@ -88,8 +89,9 @@ public class TransactionService {
 
   @Transactional
   public TransactionResponse withdraw(UUID walletId, BigDecimal amount, String correlationId) {
-    var normalizedAmount = normalize(amount);
-    var fingerprint = fingerprint(OperationType.WITHDRAWAL, walletId.toString(), normalizedAmount);
+    var normalizedAmount = normalizeScale(amount);
+    var fingerprint =
+        buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), normalizedAmount);
 
     var existingResponse = replayIfIdempotent(correlationId, fingerprint);
     if (existingResponse.isPresent()) {
@@ -127,9 +129,10 @@ public class TransactionService {
   public TransferResponse transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
     validateDistinctWallets(fromWalletId, toWalletId);
-    var normalizedAmount = normalize(amount);
+    var normalizedAmount = normalizeScale(amount);
     var fingerprint =
-        fingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, normalizedAmount);
+        buildFingerprint(
+            OperationType.TRANSFER, fromWalletId + "->" + toWalletId, normalizedAmount);
 
     var existingResultBody = findExistingResultBody(correlationId, fingerprint);
     if (existingResultBody.isPresent()) {
@@ -211,25 +214,17 @@ public class TransactionService {
     }
   }
 
-  private TransferResponse readTransferResponse(String resultBody) {
-    try {
-      return objectMapper.readValue(resultBody, TransferResponse.class);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException("Corrupted idempotency entry", ex);
-    }
-  }
-
-  private BigDecimal normalize(BigDecimal amount) {
+  private BigDecimal normalizeScale(BigDecimal amount) {
     return amount.setScale(2, UNNECESSARY);
   }
 
-  private String fingerprint(OperationType operationType, String key, BigDecimal amount) {
+  private String buildFingerprint(OperationType operationType, String key, BigDecimal amount) {
     return operationType + ":" + key + ":" + amount.toPlainString();
   }
 
   private Optional<TransactionResponse> replayIfIdempotent(
       String correlationId, String fingerprint) {
-    return findExistingResultBody(correlationId, fingerprint).map(this::readResponse);
+    return findExistingResultBody(correlationId, fingerprint).map(this::readTransactionResponse);
   }
 
   private Optional<String> findExistingResultBody(String correlationId, String fingerprint) {
@@ -256,9 +251,17 @@ public class TransactionService {
     return resultBody;
   }
 
-  private TransactionResponse readResponse(String resultBody) {
+  private TransactionResponse readTransactionResponse(String resultBody) {
     try {
       return objectMapper.readValue(resultBody, TransactionResponse.class);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException("Corrupted idempotency entry", ex);
+    }
+  }
+
+  private TransferResponse readTransferResponse(String resultBody) {
+    try {
+      return objectMapper.readValue(resultBody, TransferResponse.class);
     } catch (JsonProcessingException ex) {
       throw new IllegalStateException("Corrupted idempotency entry", ex);
     }
