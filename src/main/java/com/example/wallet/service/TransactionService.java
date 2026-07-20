@@ -55,9 +55,9 @@ public class TransactionService {
     var normalizedAmount = normalize(amount);
     var fingerprint = fingerprint(OperationType.DEPOSIT, walletId.toString(), normalizedAmount);
 
-    var cached = replayIfIdempotent(correlationId, fingerprint);
-    if (cached.isPresent()) {
-      return cached.get();
+    var existingResponse = replayIfIdempotent(correlationId, fingerprint);
+    if (existingResponse.isPresent()) {
+      return existingResponse.get();
     }
 
     var wallet = findWalletForUpdate(walletId);
@@ -91,9 +91,9 @@ public class TransactionService {
     var normalizedAmount = normalize(amount);
     var fingerprint = fingerprint(OperationType.WITHDRAWAL, walletId.toString(), normalizedAmount);
 
-    var cached = replayIfIdempotent(correlationId, fingerprint);
-    if (cached.isPresent()) {
-      return cached.get();
+    var existingResponse = replayIfIdempotent(correlationId, fingerprint);
+    if (existingResponse.isPresent()) {
+      return existingResponse.get();
     }
 
     var wallet = findWalletForUpdate(walletId);
@@ -131,9 +131,9 @@ public class TransactionService {
     var fingerprint =
         fingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, normalizedAmount);
 
-    var cachedBody = findCachedResultBody(correlationId, fingerprint);
-    if (cachedBody.isPresent()) {
-      return readTransferResponse(cachedBody.get());
+    var existingResultBody = findExistingResultBody(correlationId, fingerprint);
+    if (existingResultBody.isPresent()) {
+      return readTransferResponse(existingResultBody.get());
     }
 
     var firstWalletId = fromWalletId.compareTo(toWalletId) <= 0 ? fromWalletId : toWalletId;
@@ -229,10 +229,10 @@ public class TransactionService {
 
   private Optional<TransactionResponse> replayIfIdempotent(
       String correlationId, String fingerprint) {
-    return findCachedResultBody(correlationId, fingerprint).map(this::readResponse);
+    return findExistingResultBody(correlationId, fingerprint).map(this::readResponse);
   }
 
-  private Optional<String> findCachedResultBody(String correlationId, String fingerprint) {
+  private Optional<String> findExistingResultBody(String correlationId, String fingerprint) {
     return idempotencyEntryRepository
         .findById(correlationId)
         .map(
