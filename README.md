@@ -111,6 +111,7 @@ Full request/response contract: `specs/001-wallet-core-operations/contracts/wall
 - [ ] Remove wallet lookups by `userId` — a `userId` may have N wallets, so wallets should always be looked up by wallet `id` instead
 - [ ] Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl`
 - [ ] Remove `asOf` from the balance lookup — only the wallet's current balance is needed
+- [ ] Prefer method references over lambdas whenever possible
 - [ ] Review all `@Transactional` methods
 - [ ] Move all integration test JSON payloads into dedicated `.json` files, per `.claude/rules/code-conventions.md`
 - [ ] Remove all test classes suffixed `Test`, except controller integration tests, which must be suffixed `IntegrationTest`
