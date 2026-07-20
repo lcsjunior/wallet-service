@@ -6,6 +6,7 @@
 - Immutable DTOs via Java `record`
 - Entity ↔ DTO mapping with MapStruct
 - Object construction via factory methods or builders (no direct `new`)
+- Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl` (e.g., `WalletRepository` → `WalletRepositoryImpl`)
 - All new code goes under `src/main/java/com/example/wallet_service/` following the same layering
 
 ```
@@ -41,8 +42,28 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 ## Method Naming
 
 - Method names MUST be objective, short, and free of abbreviations — this applies to production code and test code alike
+- No method name may exceed 38 characters
+- Factory methods MUST be named `of` (e.g., `Wallet.of(userId)`) — never `create`, `createNew`, or similar
 - Every test method name must start with `should` (e.g., `shouldReturnBalanceWhenWalletExists`)
 - Every test method must be annotated with `@DisplayName` describing the scenario
+
+## Local Variables
+
+- Prefer `var` over explicit types for local variable declarations when the type is clear from the right-hand side.
+
+## Control Flow
+
+- Prefer early returns (guard clauses) over nested conditionals — return/throw as soon as a precondition fails instead of wrapping the remaining logic in an `else` block.
+
+## Logging
+
+- Every class that logs MUST declare a `LOG_PREFIX` constant and prepend it to every log message, e.g.:
+
+```java
+private static final String LOG_PREFIX = "[WALLET_SERVICE] ";
+
+log.info(LOG_PREFIX + "Wallet created | userId={}, walletId={}", newWallet.getUserId(), newWallet.getId());
+```
 
 ## Comments
 

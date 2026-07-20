@@ -94,3 +94,24 @@ Full request/response contract: `specs/001-wallet-core-operations/contracts/wall
 ## TODO
 
 - [ ] Add pagination support for transaction history endpoints
+- [ ] Format code according to `.claude/rules/code-conventions.md`
+- [ ] Use cache/Redis for idempotency
+- [ ] `userId` should be a UUID
+- [ ] Rename factory methods to `of` (e.g., `Wallet.createNew` → `Wallet.of`, `IdempotencyRecord.create` → `IdempotencyRecord.of`)
+- [ ] The current implementation is bad and should be redone as a clean implementation, similar to the `legacy` branch
+- [ ] Every validation method must start with `validate`
+- [ ] Add troubleshooting logs similar to the `legacy` branch, with a mandatory prefix
+- [ ] Prefer `var` over explicit types for local variables
+- [ ] Bean validation annotations must use customized messages from `messages.properties`, see `legacy` branch
+- [ ] Every validation that throws an exception must be extracted into a separate `validate` method
+- [ ] Exception methods must not expose/return `userId`
+- [ ] Add a pre-commit/build hook to auto-format Java code (e.g., Spotless with Google Java Format)
+- [ ] `GlobalExceptionHandler` should not hardcode error details — they should come from the exception itself; simplify `new ErrorResponse` creation with a builder or factory method
+- [ ] Move all exception messages and error codes (e.g., `CORRELATION_ID_CONFLICT`) out of hardcoded strings into an enum
+- [ ] Remove wallet lookups by `userId` — a `userId` may have N wallets, so wallets should always be looked up by wallet `id` instead
+- [ ] Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl`
+- [ ] Remove `asOf` from the balance lookup — only the wallet's current balance is needed
+- [ ] Review all `@Transactional` methods
+- [ ] Move all integration test JSON payloads into dedicated `.json` files, per `.claude/rules/code-conventions.md`
+- [ ] Remove all test classes suffixed `Test`, except controller integration tests, which must be suffixed `IntegrationTest`
+- [ ] No method name may exceed 38 characters
