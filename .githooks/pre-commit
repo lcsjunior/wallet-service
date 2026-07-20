@@ -1,0 +1,3 @@
+#!/bin/sh
+./mvnw spotless:apply
+git diff --name-only --diff-filter=ACM | grep '\.java$' | xargs -r git add

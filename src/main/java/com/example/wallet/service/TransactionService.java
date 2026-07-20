@@ -1,0 +1,295 @@
+package com.example.wallet.service;
+
+import static com.example.wallet.exception.ErrorCode.CORRELATION_ID_CONFLICT;
+import static com.example.wallet.exception.ErrorCode.INSUFFICIENT_BALANCE;
+import static com.example.wallet.exception.ErrorCode.SAME_WALLET_TRANSFER;
+import static com.example.wallet.exception.ErrorCode.WALLET_NOT_FOUND;
+import static java.math.RoundingMode.UNNECESSARY;
+
+import com.example.wallet.dto.TransactionResponse;
+import com.example.wallet.dto.TransferResponse;
+import com.example.wallet.entity.IdempotencyEntry;
+import com.example.wallet.entity.OperationType;
+import com.example.wallet.entity.TransactionType;
+import com.example.wallet.entity.Wallet;
+import com.example.wallet.entity.WalletTransaction;
+import com.example.wallet.exception.ServiceException;
+import com.example.wallet.repository.IdempotencyEntryRepository;
+import com.example.wallet.repository.WalletRepository;
+import com.example.wallet.repository.WalletTransactionRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+@Service
+public class TransactionService {
+
+  private static final String LOG_PREFIX = "[TRANSACTION_SERVICE] ";
+
+  private static final Logger log = LoggerFactory.getLogger(TransactionService.class);
+
+  private final WalletRepository walletRepository;
+  private final WalletTransactionRepository walletTransactionRepository;
+  private final IdempotencyEntryRepository idempotencyEntryRepository;
+  private final ObjectMapper objectMapper;
+
+  public TransactionService(
+      WalletRepository walletRepository,
+      WalletTransactionRepository walletTransactionRepository,
+      IdempotencyEntryRepository idempotencyEntryRepository,
+      ObjectMapper objectMapper) {
+    this.walletRepository = walletRepository;
+    this.walletTransactionRepository = walletTransactionRepository;
+    this.idempotencyEntryRepository = idempotencyEntryRepository;
+    this.objectMapper = objectMapper;
+  }
+
+  @Transactional
+  public TransactionResponse deposit(UUID walletId, BigDecimal amount, String correlationId) {
+    var normalizedAmount = normalize(amount);
+    var fingerprint = fingerprint(OperationType.DEPOSIT, walletId.toString(), normalizedAmount);
+
+    var cached = replayIfIdempotent(correlationId, fingerprint);
+    if (cached.isPresent()) {
+      return cached.get();
+    }
+
+    var wallet = findWalletForUpdate(walletId);
+    wallet.credit(normalizedAmount);
+    walletRepository.save(wallet);
+
+    var transaction =
+        WalletTransaction.of(
+            wallet.getId(),
+            TransactionType.DEPOSIT,
+            normalizedAmount,
+            wallet.getBalance(),
+            correlationId,
+            null);
+    walletTransactionRepository.save(transaction);
+
+    var response =
+        new TransactionResponse(
+            wallet.getId(), wallet.getBalance(), normalizedAmount, correlationId);
+    persistIdempotencyEntry(correlationId, OperationType.DEPOSIT, fingerprint, response);
+    log.info(
+        LOG_PREFIX + "Deposit completed | walletId={}, amount={}, correlationId={}",
+        walletId,
+        normalizedAmount,
+        correlationId);
+    return response;
+  }
+
+  @Transactional
+  public TransactionResponse withdraw(UUID walletId, BigDecimal amount, String correlationId) {
+    var normalizedAmount = normalize(amount);
+    var fingerprint = fingerprint(OperationType.WITHDRAWAL, walletId.toString(), normalizedAmount);
+
+    var cached = replayIfIdempotent(correlationId, fingerprint);
+    if (cached.isPresent()) {
+      return cached.get();
+    }
+
+    var wallet = findWalletForUpdate(walletId);
+    validateSufficientBalance(wallet, normalizedAmount);
+    wallet.debit(normalizedAmount);
+    walletRepository.save(wallet);
+
+    var transaction =
+        WalletTransaction.of(
+            wallet.getId(),
+            TransactionType.WITHDRAWAL,
+            normalizedAmount,
+            wallet.getBalance(),
+            correlationId,
+            null);
+    walletTransactionRepository.save(transaction);
+
+    var response =
+        new TransactionResponse(
+            wallet.getId(), wallet.getBalance(), normalizedAmount, correlationId);
+    persistIdempotencyEntry(correlationId, OperationType.WITHDRAWAL, fingerprint, response);
+    log.info(
+        LOG_PREFIX + "Withdrawal completed | walletId={}, amount={}, correlationId={}",
+        walletId,
+        normalizedAmount,
+        correlationId);
+    return response;
+  }
+
+  @Transactional
+  public TransferResponse transfer(
+      UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
+    validateDistinctWallets(fromWalletId, toWalletId);
+    var normalizedAmount = normalize(amount);
+    var fingerprint =
+        fingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, normalizedAmount);
+
+    var cachedBody = findCachedResultBody(correlationId, fingerprint);
+    if (cachedBody.isPresent()) {
+      return readTransferResponse(cachedBody.get());
+    }
+
+    var firstWalletId = fromWalletId.compareTo(toWalletId) <= 0 ? fromWalletId : toWalletId;
+    var secondWalletId = fromWalletId.compareTo(toWalletId) <= 0 ? toWalletId : fromWalletId;
+    var firstWallet = findWalletForUpdate(firstWalletId);
+    var secondWallet = findWalletForUpdate(secondWalletId);
+
+    var fromWallet = firstWalletId.equals(fromWalletId) ? firstWallet : secondWallet;
+    var toWallet = firstWalletId.equals(fromWalletId) ? secondWallet : firstWallet;
+
+    validateSufficientBalance(fromWallet, normalizedAmount);
+    fromWallet.debit(normalizedAmount);
+    toWallet.credit(normalizedAmount);
+    walletRepository.save(fromWallet);
+    walletRepository.save(toWallet);
+
+    walletTransactionRepository.save(
+        WalletTransaction.of(
+            fromWallet.getId(),
+            TransactionType.TRANSFER_DEBIT,
+            normalizedAmount,
+            fromWallet.getBalance(),
+            correlationId,
+            toWallet.getId()));
+    walletTransactionRepository.save(
+        WalletTransaction.of(
+            toWallet.getId(),
+            TransactionType.TRANSFER_CREDIT,
+            normalizedAmount,
+            toWallet.getBalance(),
+            correlationId,
+            fromWallet.getId()));
+
+    var response =
+        new TransferResponse(
+            fromWallet.getId(),
+            fromWallet.getBalance(),
+            toWallet.getId(),
+            toWallet.getBalance(),
+            normalizedAmount,
+            correlationId);
+    persistIdempotencyEntry(correlationId, OperationType.TRANSFER, fingerprint, response);
+    log.info(
+        LOG_PREFIX
+            + "Transfer completed | fromWalletId={}, toWalletId={}, amount={}, correlationId={}",
+        fromWalletId,
+        toWalletId,
+        normalizedAmount,
+        correlationId);
+    return response;
+  }
+
+  private Wallet findWalletForUpdate(UUID walletId) {
+    return walletRepository
+        .findByIdForUpdate(walletId)
+        .orElseThrow(() -> walletNotFoundException(walletId));
+  }
+
+  private ServiceException walletNotFoundException(UUID walletId) {
+    log.warn(LOG_PREFIX + "Wallet not found | walletId={}", walletId);
+    return new ServiceException(WALLET_NOT_FOUND);
+  }
+
+  private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
+    if (wallet.getBalance().compareTo(amount) < 0) {
+      log.warn(
+          LOG_PREFIX + "Insufficient balance | walletId={}, amount={}", wallet.getId(), amount);
+      throw new ServiceException(INSUFFICIENT_BALANCE);
+    }
+  }
+
+  private void validateDistinctWallets(UUID fromWalletId, UUID toWalletId) {
+    if (fromWalletId.equals(toWalletId)) {
+      throw new ServiceException(SAME_WALLET_TRANSFER);
+    }
+  }
+
+  private TransferResponse readTransferResponse(String resultBody) {
+    try {
+      return objectMapper.readValue(resultBody, TransferResponse.class);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException("Corrupted idempotency entry", ex);
+    }
+  }
+
+  private BigDecimal normalize(BigDecimal amount) {
+    return amount.setScale(2, UNNECESSARY);
+  }
+
+  private String fingerprint(OperationType operationType, String key, BigDecimal amount) {
+    return operationType + ":" + key + ":" + amount.toPlainString();
+  }
+
+  private Optional<TransactionResponse> replayIfIdempotent(
+      String correlationId, String fingerprint) {
+    return findCachedResultBody(correlationId, fingerprint).map(this::readResponse);
+  }
+
+  private Optional<String> findCachedResultBody(String correlationId, String fingerprint) {
+    return idempotencyEntryRepository
+        .findById(correlationId)
+        .map(
+            entry ->
+                validateFingerprintAndUnwrap(
+                    correlationId,
+                    fingerprint,
+                    entry.getRequestFingerprint(),
+                    entry.getResultBody()));
+  }
+
+  private String validateFingerprintAndUnwrap(
+      String correlationId,
+      String expectedFingerprint,
+      String actualFingerprint,
+      String resultBody) {
+    if (!actualFingerprint.equals(expectedFingerprint)) {
+      log.warn(LOG_PREFIX + "Correlation-Id conflict | correlationId={}", correlationId);
+      throw new ServiceException(CORRELATION_ID_CONFLICT);
+    }
+    return resultBody;
+  }
+
+  private TransactionResponse readResponse(String resultBody) {
+    try {
+      return objectMapper.readValue(resultBody, TransactionResponse.class);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException("Corrupted idempotency entry", ex);
+    }
+  }
+
+  private void persistIdempotencyEntry(
+      String correlationId, OperationType operationType, String fingerprint, Object response) {
+    try {
+      var body = objectMapper.writeValueAsString(response);
+      var entry = IdempotencyEntry.of(correlationId, operationType, fingerprint, body);
+      idempotencyEntryRepository.save(entry);
+      registerCacheWriteAfterCommit(entry);
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException(
+          "Failed to serialize idempotency entry for " + correlationId, ex);
+    }
+  }
+
+  private void registerCacheWriteAfterCommit(IdempotencyEntry entry) {
+    if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+      idempotencyEntryRepository.cache(entry);
+      return;
+    }
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            idempotencyEntryRepository.cache(entry);
+          }
+        });
+  }
+}

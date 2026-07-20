@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test
 
 # Run a single test class
-./mvnw test -Dtest=WalletServiceApplicationTests
+./mvnw test -Dtest=WalletApplicationTests
 
 # Build and run with Docker
 docker compose up --build
@@ -34,5 +34,5 @@ Idempotency: mutation endpoints (deposit, withdraw, transfer) use a `correlation
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/001-wallet-core-operations/plan.md`
+`specs/001-redis-cacheable-config/plan.md`
 <!-- SPECKIT END -->

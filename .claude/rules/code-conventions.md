@@ -8,17 +8,17 @@
 - Entity ↔ DTO mapping with MapStruct
 - Object construction via factory methods or builders (no direct `new`)
 - Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl` (e.g., `WalletRepository` → `WalletRepositoryImpl`)
-- All new code goes under `src/main/java/com/example/wallet_service/` following the same layering
+- All new code goes under `src/main/java/com/example/wallet/` following the same layering
 
 ```
-src/main/java/com/example/wallet_service/
+src/main/java/com/example/wallet/
 ├── controller/     # REST controllers
 ├── dto/            # Immutable request/response records
 ├── entity/         # JPA entities
 ├── mapper/         # MapStruct mappers (Entity ↔ DTO)
 ├── repository/     # Spring Data JPA repositories
 ├── service/        # Business logic
-└── WalletServiceApplication.java
+└── WalletApplication.java
 ```
 
 ## Testing
@@ -33,7 +33,19 @@ src/main/java/com/example/wallet_service/
 
 ## Package Naming
 
-Packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
+Packaged as `com.example.wallet`.
+
+## Exceptions
+
+- Business errors MUST be represented by throwing `ServiceException` — never create a dedicated exception subclass per error case. `ServiceException` holds exactly two attributes, `message` (inherited from `Throwable`) and `httpStatus`, and exposes exactly two public constructors: `ServiceException(String message, HttpStatus httpStatus)`, which sets both attributes directly, and `ServiceException(ErrorCode errorCode)`, a convenience overload that decomposes the enum and delegates to the first constructor (e.g., `new ServiceException(WALLET_NOT_FOUND)`).
+- The error JSON response (`ProblemDetail`) exposes only `title`, `detail`, `status`, `instance`, and — for validation errors — `errors`. It MUST NOT include a machine-readable error `code` property.
+
+## Message Keys
+
+- Keys in `messages.properties` MUST NOT contain hyphens; compound words within a segment are concatenated (e.g., `wallet.notfound`, `correlationid.conflict`, `transfer.samewallet`) — never `wallet.not-found` or `correlation-id.conflict`.
+- Delete unused message keys in the same change set that removes their last reference.
+- Entries in `messages.properties` MUST be sorted alphabetically by key.
+- Message values MUST NOT end with punctuation (no trailing `.`, `!`, etc.) — e.g., `wallet.notfound=Wallet not found`, never `Wallet not found.`.
 
 ## Monetary Values
 
@@ -46,12 +58,19 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 - Method names MUST be objective, short, and free of abbreviations — this applies to production code and test code alike
 - No method name may exceed 38 characters
 - Factory methods MUST be named `of` (e.g., `Wallet.of(userId)`) — never `create`, `createNew`, or similar
+- A method named `validate*` MUST contain a conditional that decides whether to reject the input (e.g., `if (...) throw ...`) — a method that unconditionally builds/logs/throws has nothing to validate and MUST be named after what it does instead (e.g., a method that always logs and returns a `ServiceException` for a missing wallet is `walletNotFoundException`, not `validateWalletExists`)
 - Every test method name must start with `should` (e.g., `shouldReturnBalanceWhenWalletExists`)
 - Every test method must be annotated with `@DisplayName` describing the scenario
 
 ## Local Variables
 
 - Prefer `var` over explicit types for local variable declarations when the type is clear from the right-hand side.
+
+## Imports
+
+- Static constants and enum values (e.g., `ErrorCode.WALLET_NOT_FOUND`, `HttpStatus.CREATED`, `EnumType.STRING`, `BigDecimal.ZERO`) MUST be brought in with `import static` and referenced unqualified — never qualified with the declaring type at the call site.
+- Skip the static import (keep the reference qualified) only when it would collide with another name already used unqualified in the same file — e.g., `OperationType.DEPOSIT` and `TransactionType.DEPOSIT` both exist, so when a class uses both enums, leave every reference to them qualified rather than statically importing just one.
+- This rule does not apply to ordinary static factory method calls (e.g., `Optional.of(...)`, `UUID.randomUUID()`, `ResponseEntity.ok(...)`, `LoggerFactory.getLogger(...)`) or to this project's own `of(...)` factory methods — those stay qualified with the class name.
 
 ## Control Flow
 
@@ -60,10 +79,11 @@ Packaged as `com.example.wallet_service` (note underscore — the artifact name 
 
 ## Logging
 
-- Every class that logs MUST declare a `LOG_PREFIX` constant and prepend it to every log message, e.g.:
+- Every class that logs MUST declare a `LOG_PREFIX` constant and prepend it to every log message. `LOG_PREFIX` MUST be the declaring class's own name in `UPPER_SNAKE_CASE` (e.g., `TransactionService` → `[TRANSACTION_SERVICE] `) — never copied from another class, e.g.:
 
 ```java
-private static final String LOG_PREFIX = "[WALLET_SERVICE] ";
+// inside TransactionService
+private static final String LOG_PREFIX = "[TRANSACTION_SERVICE] ";
 
 log.info(LOG_PREFIX + "Wallet created | userId={}, walletId={}", newWallet.getUserId(), newWallet.getId());
 ```
@@ -82,3 +102,4 @@ The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-
 - Whenever a change affects architecture, conventions, hardware wiring, dependencies,
   or any information already documented in these files, update them in the same
   change set.
+- `README.md` MUST be written entirely in English — no other language, in any section.
