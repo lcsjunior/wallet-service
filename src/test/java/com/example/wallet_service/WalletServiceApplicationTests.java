@@ -1,5 +1,6 @@
 package com.example.wallet_service;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -7,7 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 class WalletServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	@DisplayName("Deve carregar o contexto da aplicação Spring com sucesso")
+	void shouldLoadApplicationContext() {
 	}
 
 }
