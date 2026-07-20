@@ -3,6 +3,7 @@
 ## Architecture
 
 - Layered MVC: controller → service → repository
+- Every controller must be mapped under a `/v1/...` prefix (e.g., `/v1/wallets`)
 - Immutable DTOs via Java `record`
 - Entity ↔ DTO mapping with MapStruct
 - Object construction via factory methods or builders (no direct `new`)
@@ -23,6 +24,7 @@ src/main/java/com/example/wallet_service/
 ## Testing
 
 - Every controller must have an integration test (`@WebMvcTest` or `@SpringBootTest`)
+- Integration tests MUST NOT use mocks (e.g., `@MockitoBean`) — they must exercise the full stack, not stub out collaborators like `TransactionService`
 - Integration test classes MUST be suffixed `IntegrationTest` (e.g., `WalletControllerIntegrationTest`); unit test classes MUST be suffixed `Test` (e.g., `WalletServiceTest`)
 - Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, true)`) — no extra or missing fields allowed
 - Expected/mock JSON payloads used in integration tests MUST be created in dedicated `.json` files under `src/test/resources/mock/json/`, never as inline Java string literals

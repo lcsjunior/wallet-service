@@ -95,7 +95,7 @@ Full request/response contract: `specs/001-wallet-core-operations/contracts/wall
 
 - [ ] Add pagination support for transaction history endpoints
 - [ ] Format code according to `.claude/rules/code-conventions.md`
-- [ ] Use cache/Redis for idempotency
+- [ ] Add Redis as a write-through/read-through cache in front of the idempotency table (hybrid approach) — the relational database remains the source of truth, written in the same transaction as the balance mutation; Redis only accelerates frequent retries and is never the sole store
 - [ ] `userId` should be a UUID
 - [ ] Rename factory methods to `of` (e.g., `Wallet.createNew` → `Wallet.of`, `IdempotencyRecord.create` → `IdempotencyRecord.of`)
 - [ ] The current implementation is bad and should be redone as a clean implementation, similar to the `legacy` branch
@@ -116,3 +116,9 @@ Full request/response contract: `specs/001-wallet-core-operations/contracts/wall
 - [ ] Move all integration test JSON payloads into dedicated `.json` files, per `.claude/rules/code-conventions.md`
 - [ ] Remove all test classes suffixed `Test`, except controller integration tests, which must be suffixed `IntegrationTest`
 - [ ] No method name may exceed 38 characters
+- [ ] Integration tests must not use mocks (e.g., `DepositControllerTest` mocking `TransactionService` with `@MockitoBean`) — they should exercise the full stack
+- [ ] Deposit, withdrawal, and transfer operations must return `204 No Content` from the controller
+- [ ] Every controller must have a `/v1/...` prefix (e.g., `/v1/wallets`)
+- [ ] Rename `IdempotencyRecord` to `IdempotencyEntry` to avoid confusion with the Java `record` keyword
+- [ ] Add a GitHub Actions workflow that runs on PRs targeting `main` with two required status checks: (1) `./mvnw clean test` with JaCoCo, (2) SonarQube analysis — merge to `main` only allowed when both checks are green
+- [ ] Add a GitHub Actions workflow with two required status checks gating merges to `main`: (1) `./mvnw clean test` with JaCoCo, (2) SonarQube analysis — merge to `main` only allowed when both checks are green
