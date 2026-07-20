@@ -31,8 +31,12 @@ Idempotency: mutation endpoints (deposit, withdraw, transfer) use a `correlation
 
 > Code conventions (package naming, layering, DTOs, testing, Docker build) are defined in `.claude/rules/code-conventions.md`.
 
+## Temporary Rules
+
+- **Integration tests only (temporary)**: Unit test classes (suffixed `Test`) MUST NOT be created while this rule is active. Only integration test classes (suffixed `IntegrationTest`) are to be authored or maintained. This rule is temporary and supersedes — without editing — the permanent unit-testing requirements in `.claude/rules/code-conventions.md` until it is explicitly lifted.
+
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/001-redis-cacheable-config/plan.md`
+`specs/002-remove-unit-tests/plan.md`
 <!-- SPECKIT END -->
