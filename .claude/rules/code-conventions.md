@@ -6,6 +6,7 @@
 - Every controller must be mapped under a `/v1/...` prefix (e.g., `/v1/wallets`)
 - Immutable DTOs via Java `record`
 - Entity ↔ DTO mapping with MapStruct
+- DTOs MUST only be transformed to/from entities (or other DTOs) via a MapStruct mapper — never manually field-by-field in a controller, service, or elsewhere
 - Object construction via factory methods or builders (no direct `new`)
 - Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl` (e.g., `WalletRepository` → `WalletRepositoryImpl`)
 - All new code goes under `src/main/java/com/example/wallet/` following the same layering

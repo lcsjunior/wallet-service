@@ -32,7 +32,7 @@ class DepositControllerIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    Wallet wallet = Wallet.of(UUID.randomUUID());
+    var wallet = Wallet.of(UUID.randomUUID());
     walletRepository.saveAndFlush(wallet);
     walletId = wallet.getId();
   }
@@ -48,7 +48,7 @@ class DepositControllerIntegrationTest {
                 .content("{\"amount\":\"100.00\"}"))
         .andExpect(status().isNoContent());
 
-    Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+    var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
   }
 
@@ -104,7 +104,7 @@ class DepositControllerIntegrationTest {
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
   void shouldReturnNotFoundWhenWalletDoesNotExist() throws Exception {
-    UUID missingWalletId = UUID.randomUUID();
+    var missingWalletId = UUID.randomUUID();
 
     MvcResult result =
         mockMvc
@@ -148,7 +148,7 @@ class DepositControllerIntegrationTest {
                 .content("{\"amount\":\"100.00\"}"))
         .andExpect(status().isNoContent());
 
-    Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+    var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
   }
 

@@ -10,4 +10,10 @@ public record TransactionResponse(
     UUID walletId,
     @JsonFormat(shape = STRING) BigDecimal balance,
     @JsonFormat(shape = STRING) BigDecimal amount,
-    String correlationId) {}
+    String correlationId) {
+
+  public static TransactionResponse of(
+      UUID walletId, BigDecimal balance, BigDecimal amount, String correlationId) {
+    return new TransactionResponse(walletId, balance, amount, correlationId);
+  }
+}

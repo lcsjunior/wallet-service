@@ -73,7 +73,7 @@ public class TransactionService {
     walletTransactionRepository.save(transaction);
 
     var response =
-        new TransactionResponse(wallet.getId(), wallet.getBalance(), amount, correlationId);
+        TransactionResponse.of(wallet.getId(), wallet.getBalance(), amount, correlationId);
     persistIdempotencyEntry(correlationId, OperationType.DEPOSIT, fingerprint, response);
     log.info(
         LOG_PREFIX + "Deposit completed | walletId={}, amount={}, correlationId={}",
@@ -108,7 +108,7 @@ public class TransactionService {
     walletTransactionRepository.save(transaction);
 
     var response =
-        new TransactionResponse(wallet.getId(), wallet.getBalance(), amount, correlationId);
+        TransactionResponse.of(wallet.getId(), wallet.getBalance(), amount, correlationId);
     persistIdempotencyEntry(correlationId, OperationType.WITHDRAWAL, fingerprint, response);
     log.info(
         LOG_PREFIX + "Withdrawal completed | walletId={}, amount={}, correlationId={}",
@@ -162,7 +162,7 @@ public class TransactionService {
             fromWallet.getId()));
 
     var response =
-        new TransferResponse(
+        TransferResponse.of(
             fromWallet.getId(),
             fromWallet.getBalance(),
             toWallet.getId(),

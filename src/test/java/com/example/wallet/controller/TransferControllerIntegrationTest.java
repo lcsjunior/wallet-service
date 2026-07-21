@@ -34,12 +34,12 @@ class TransferControllerIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    Wallet fromWallet = Wallet.of(UUID.randomUUID());
+    var fromWallet = Wallet.of(UUID.randomUUID());
     fromWallet.credit(new BigDecimal("100.00"));
     walletRepository.saveAndFlush(fromWallet);
     fromWalletId = fromWallet.getId();
 
-    Wallet toWallet = Wallet.of(UUID.randomUUID());
+    var toWallet = Wallet.of(UUID.randomUUID());
     walletRepository.saveAndFlush(toWallet);
     toWalletId = toWallet.getId();
   }
@@ -97,7 +97,7 @@ class TransferControllerIntegrationTest {
   @Test
   @DisplayName("Deve retornar 404 quando a carteira de destino não existe")
   void shouldReturnNotFoundWhenDestinationWalletDoesNotExist() throws Exception {
-    UUID missingWalletId = UUID.randomUUID();
+    var missingWalletId = UUID.randomUUID();
 
     MvcResult result =
         mockMvc

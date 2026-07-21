@@ -12,4 +12,16 @@ public record TransferResponse(
     UUID toWalletId,
     @JsonFormat(shape = STRING) BigDecimal toBalance,
     @JsonFormat(shape = STRING) BigDecimal amount,
-    String correlationId) {}
+    String correlationId) {
+
+  public static TransferResponse of(
+      UUID fromWalletId,
+      BigDecimal fromBalance,
+      UUID toWalletId,
+      BigDecimal toBalance,
+      BigDecimal amount,
+      String correlationId) {
+    return new TransferResponse(
+        fromWalletId, fromBalance, toWalletId, toBalance, amount, correlationId);
+  }
+}

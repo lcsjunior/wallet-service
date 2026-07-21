@@ -33,7 +33,7 @@ class WithdrawalControllerIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    Wallet wallet = Wallet.of(UUID.randomUUID());
+    var wallet = Wallet.of(UUID.randomUUID());
     wallet.credit(new BigDecimal("100.00"));
     walletRepository.saveAndFlush(wallet);
     walletId = wallet.getId();
@@ -50,7 +50,7 @@ class WithdrawalControllerIntegrationTest {
                 .content("{\"amount\":\"30.00\"}"))
         .andExpect(status().isNoContent());
 
-    Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+    var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("70.00");
   }
 
@@ -79,7 +79,7 @@ class WithdrawalControllerIntegrationTest {
                 "/v1/wallets/" + walletId + "/withdrawals"));
     JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), true);
 
-    Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+    var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
   }
 
@@ -110,7 +110,7 @@ class WithdrawalControllerIntegrationTest {
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
   void shouldReturnNotFoundWhenWalletDoesNotExist() throws Exception {
-    UUID missingWalletId = UUID.randomUUID();
+    var missingWalletId = UUID.randomUUID();
 
     MvcResult result =
         mockMvc
@@ -154,7 +154,7 @@ class WithdrawalControllerIntegrationTest {
                 .content("{\"amount\":\"30.00\"}"))
         .andExpect(status().isNoContent());
 
-    Wallet wallet = walletRepository.findById(walletId).orElseThrow();
+    var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("70.00");
   }
 }

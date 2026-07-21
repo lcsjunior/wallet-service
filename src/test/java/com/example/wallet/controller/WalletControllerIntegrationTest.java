@@ -27,7 +27,7 @@ class WalletControllerIntegrationTest {
   @Test
   @DisplayName("Deve criar carteira com saldo zero para um userId informado")
   void shouldCreateWalletWithZeroBalance() throws Exception {
-    String userId = UUID.randomUUID().toString();
+    var userId = UUID.randomUUID().toString();
 
     MvcResult result =
         mockMvc
@@ -38,7 +38,7 @@ class WalletControllerIntegrationTest {
             .andExpect(status().isCreated())
             .andReturn();
 
-    String actual = result.getResponse().getContentAsString();
+    var actual = result.getResponse().getContentAsString();
     String walletId = JsonPath.parse(actual).read("$.walletId");
     String createdAt = JsonPath.parse(actual).read("$.createdAt");
     String expected =
@@ -60,7 +60,7 @@ class WalletControllerIntegrationTest {
   @Test
   @DisplayName("Deve retornar o saldo atual quando a carteira existe")
   void shouldReturnCurrentBalanceWhenWalletExists() throws Exception {
-    String userId = UUID.randomUUID().toString();
+    var userId = UUID.randomUUID().toString();
     MvcResult createResult =
         mockMvc
             .perform(
@@ -86,7 +86,7 @@ class WalletControllerIntegrationTest {
   @Test
   @DisplayName("Deve retornar 404 ao consultar saldo de uma carteira inexistente")
   void shouldReturnNotFoundWhenQueryingBalanceOfMissingWallet() throws Exception {
-    UUID walletId = UUID.randomUUID();
+    var walletId = UUID.randomUUID();
 
     MvcResult result =
         mockMvc
