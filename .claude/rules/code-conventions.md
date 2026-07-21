@@ -4,18 +4,18 @@
 
 - Layered MVC: controller → service → repository, all under `com.example.wallet`
 - Controllers mapped under `/v1/...`
-- DTOs are immutable `record`s; entity ↔ DTO conversion only through a MapStruct mapper, never field-by-field
-- Objects are built by factory methods or builders — no direct `new`
-- Repositories are Spring Data interfaces extending `JpaRepository`; never write an implementation class
+- DTOs are immutable `record`s; entity ↔ DTO conversion only through MapStruct
+- Objects come from factory methods or builders — no direct `new`
+- Repositories are Spring Data interfaces; never write an implementation class
 
 ```
 src/main/java/com/example/wallet/
-├── config/         # Spring configuration (e.g., @EnableCaching)
+├── config/         # Spring configuration
 ├── controller/     # REST controllers
-├── dto/            # Immutable request/response records
+├── dto/            # Request/response records
 ├── entity/         # JPA entities
 ├── exception/      # ServiceException, ErrorCode, global handler
-├── mapper/         # MapStruct mappers (Entity ↔ DTO)
+├── mapper/         # MapStruct mappers
 ├── repository/     # Spring Data JPA repositories
 ├── service/        # Business logic
 │   └── resolver/   # Cross-cutting service helpers
@@ -24,62 +24,66 @@ src/main/java/com/example/wallet/
 
 ## Testing
 
-Integration test classes are suffixed `IntegrationTest`, unit test classes `Test`.
+Integration classes are suffixed `IntegrationTest`, unit classes `Test`.
 
-**Integration** — every controller has one, exercising the full stack with no mocks:
+**Integration** — one per controller, full stack, no mocks:
 
-- Extend `AppTests`, which holds the shared `MockMvc` and `expectBalance`; wallet UUIDs and other scenario data stay in the concrete class
-- Assert the whole body with `.content().json(expected, STRICT)` — no extra or missing fields
-- Tests of a mutation endpoint end with `expectBalance(...)`, failure cases included: it proves a rejected request had no side effect (a transfer to a missing wallet must not debit the source)
-- Payloads with one field or none come from `JsonUtils.fieldJson(field, value)` / `emptyJson()`, keeping the value at the call site
-- Larger payloads live in `src/test/resources/mock/json/{request,response}/<controller>/`, named `<payload-type>-<scenario>.json` — payload type is `amount`/`transfer`/`wallet` for requests, `error`/`balance`/`wallet` for responses
-- Those files are hard-coded: every UUID and `instance` path written out literally. No `${...}` templating, no runtime substitution — to change an expectation, edit the file
-- Seed data is one `.sql` per test class in `mock/sql/`, applied with `@Sql(scripts = "...", executionPhase = BEFORE_TEST_METHOD)`. Each script clears every table, then inserts what the class needs; that reset per method is what buys isolation and order-independence
-- Seeded UUIDs are real, written literally, and never repeat across seed files; `user_id` is the same value everywhere
+- Extend `AppTests` (shared `MockMvc` and `expectBalance`); wallet UUIDs stay as constants in the concrete class
+- Assert the whole body with `.content().json(expected, STRICT)`
+- Mutation tests end with `expectBalance(...)`, failures included — it proves no side effect
+- Payloads with one field or none: `JsonUtils.fieldJson(field, value)` / `emptyJson()`
+- Larger payloads: `JsonUtils.loadJson(path)`, relative to `src/test/resources/mock/json/`, laid out as `{request,response}/<controller>/<payload-type>-<scenario>.json` — payload type names what the body is (`transfer` for a request, `error` for a problem response)
+- Those files are hard-coded — every UUID and `instance` path literal, no templating
+- One seed `.sql` per test class in `mock/sql/`, applied with a class-level `@Sql(scripts = "...", executionPhase = BEFORE_TEST_METHOD)`; each script clears every table, then inserts what the class needs
+- Seeded UUIDs are literal and never repeat across seed files; `user_id` is the same everywhere
 
-**Unit** — Mockito (`@Mock`/`@InjectMocks`) to isolate the unit from repositories and other services. Call `verify(...)` whenever the point is that a collaborator was (or was not) invoked with given arguments; skip it when asserting only the returned value.
+**Unit** — Mockito (`@Mock`/`@InjectMocks`). Use `verify(...)` only when the point is that a collaborator was (or was not) called.
 
 ## Naming
 
-- Method names are objective, short, free of abbreviations, and never exceed 38 characters
-- Factory methods are named `of` (`Wallet.of(userId)`) — never `create` or similar
-- `validate*` must contain a conditional that rejects the input; a method that unconditionally builds or throws is named after what it does (`walletNotFoundException`)
-- A method whose return value no caller reads is declared `void`
-- Test methods are `should<Outcome>When<Condition>`, annotated with `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
+- Method names are objective, short, unabbreviated, max 38 characters
+- Factory methods are named `of` (`Wallet.of(userId)`)
+- `validate*` must contain a conditional that rejects the input; otherwise name the method after what it does (`walletNotFoundException`)
+- A method whose return value no caller reads is `void`
+- Test methods are `should<Outcome>When<Condition>`, with `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
 
 ## Exceptions
 
-- Business errors throw `ServiceException` — never a subclass per case. It carries `message` and `httpStatus`, with exactly two constructors: `(String, HttpStatus)` and `(ErrorCode)`, the latter delegating to the former
-- The `ProblemDetail` body exposes only `title`, `detail`, `status`, `instance`, plus `errors` for validation failures — never a machine-readable `code`
+- Business errors throw `ServiceException` — never a subclass. It carries `message` and `httpStatus`, with exactly two constructors: `(String, HttpStatus)` and `(ErrorCode)`
+- The message it carries is a message key, resolved against `messages.properties` by `MessageResolver` when the handler builds the response
+- `ProblemDetail` exposes only `title`, `detail`, `status`, `instance`, plus `errors` for validation failures — never a machine-readable `code`
+- The `title` comes from the failure kind, not from the specific error: `business.error.title` for business failures, `validation.error.title` for bean validation and missing request headers
 
 ## Message Keys
 
-- No hyphens; compound words are concatenated (`wallet.notfound`, `correlationid.conflict`)
-- Sorted alphabetically, values without trailing punctuation (`Wallet not found`)
-- A key is deleted in the same change set that removes its last reference
+- No hyphens; compound words concatenated (`wallet.notfound`, `correlationid.conflict`)
+- Sorted alphabetically, values without trailing punctuation
+- A key is deleted with its last reference
 
 ## Monetary Values
 
 - Always `BigDecimal` with scale exactly 2 — never `double`/`float`
-- More than 2 decimal places is a validation error at the DTO boundary, never silently rounded
-- Request amounts are strictly positive (`@Positive`); the sign of the effect comes from the operation type, not the value
+- More than 2 decimals is a validation error at the DTO boundary, never rounded
+- Request amounts are `@Positive`; the sign comes from the operation type
 
 ## Caching
 
-- Only `@Cacheable`, declared on the repository — `@CachePut`, `@CacheEvict` and the `CacheManager` API are prohibited, and services hold no cache-aware code
-- Never cache an absent result: `unless = "#result == null"` (Spring unwraps `Optional` before evaluating it)
-- All cache settings live in `application.properties`, never hard-coded in Java
+- Redis-backed, enabled by `CacheConfig` (`@EnableCaching`)
+- Only `@Cacheable`, on the repository — `@CachePut`, `@CacheEvict` and `CacheManager` are prohibited; services hold no cache-aware code
+- Writes populate the cache by overriding `save` with `@Cacheable` too — that is deliberate, not a mistake to be "fixed" into `@CachePut`
+- Never cache an absent result: `unless = "#result == null"`
+- All cache settings (type, TTL, host) live in `application.properties`
 
 ## Style
 
 - Prefer `var` when the type is clear from the right-hand side
-- Static-import constants and enum values (`WALLET_NOT_FOUND`, `CREATED`, `STRING`) and reference them unqualified; keep them qualified only when two enums would collide in the same file. Ordinary static calls (`Optional.of`, `UUID.randomUUID`, `Wallet.of`) stay qualified
+- Static-import constants and enum values (`WALLET_NOT_FOUND`, `CREATED`) and use them unqualified, unless two enums collide in the file; ordinary static calls (`Optional.of`, `Wallet.of`) stay qualified
 - Guard clauses over nested conditionals; method references over lambdas
-- No comments or Javadoc anywhere — naming and structure carry the meaning
+- No comments or Javadoc anywhere
 
 ## Logging
 
-Every logging class declares `LOG_PREFIX` with its own name in `UPPER_SNAKE_CASE`, prepended to every message:
+Every logging class declares `LOG_PREFIX` with its own name in `UPPER_SNAKE_CASE`:
 
 ```java
 private static final String LOG_PREFIX = "[TRANSACTION_SERVICE] ";
