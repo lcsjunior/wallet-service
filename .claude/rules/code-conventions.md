@@ -13,12 +13,15 @@
 
 ```
 src/main/java/com/example/wallet/
+├── config/         # Spring configuration (e.g., @EnableCaching)
 ├── controller/     # REST controllers
 ├── dto/            # Immutable request/response records
 ├── entity/         # JPA entities
+├── exception/      # ServiceException, ErrorCode, global handler
 ├── mapper/         # MapStruct mappers (Entity ↔ DTO)
 ├── repository/     # Spring Data JPA repositories
 ├── service/        # Business logic
+│   └── resolver/   # Cross-cutting service helpers (e.g., message resolution)
 └── WalletApplication.java
 ```
 
