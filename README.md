@@ -15,6 +15,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 ## Non-Functional Requirements
 
 - **Idempotency** — mutation operations (deposit, withdraw, transfer) are idempotent via a `correlationId` header; retrying the same request produces the same result
+- **Concurrency control** — wallet balance updates use optimistic locking (JPA `@Version`); concurrent updates to the same wallet return `409 Conflict`, and the client can safely retry via the same `correlationId`
 - **Mission-critical reliability** — downtime directly impairs platform operations
 - **Full traceability** — all operations must be auditable for balance reconciliation
 
