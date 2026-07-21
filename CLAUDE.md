@@ -1,44 +1,41 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) working in this repository.
+
+Read these instead of asking again — they are not repeated here:
+
+- `README.md` — what the service does, stack, API, errors, setup, CI
+- `.claude/rules/code-conventions.md` — how code is written here; read before editing
 
 ## Commands
 
 ```bash
-# Build
-./mvnw clean package
-
-# Run
-./mvnw spring-boot:run
-
-# Run tests
-./mvnw test
-
-# Run a single test class
+./mvnw clean package      # build; spotless:check fails the build on unformatted code
+./mvnw spotless:apply     # format before committing
+./mvnw spring-boot:run    # run
+./mvnw test               # tests; requires a running Docker daemon
 ./mvnw test -Dtest=WalletControllerIntegrationTest
-
-# Build and run with Docker
-docker compose up --build
+docker compose up --build # app + Redis; run clean package first
 ```
 
-## Architecture
+Running without Docker needs a Redis on `localhost:6379` (`REDIS_HOST`/`REDIS_PORT` to
+point elsewhere), or `CACHE_TYPE=none` to skip it.
 
-Spring Boot 3.5.16 REST service, Java 21.
+Profiles: none is production; `test` is applied by the suite; `dev` adds plain-text logs
+and the H2 console at `/h2-console` (`jdbc:h2:file:./data/wallet-service`, user `sa`, no
+password).
 
-Database: H2 relational (embedded). Schema must support full audit traceability.
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
 
-Idempotency: mutation endpoints (deposit, withdraw, transfer) use a `correlationId` header so retries are safe.
+## Invariants
 
-Concurrency: wallet balance updates are guarded by optimistic locking (JPA `@Version` on `Wallet`), not database row locks. Concurrent modifications to the same wallet fail at commit and surface as `409 Conflict` (`ObjectOptimisticLockingFailureException` handled in `GlobalExceptionHandler`); clients retry safely thanks to `correlationId` idempotency.
+Cheap to break, expensive to discover:
 
-> Code conventions (package naming, layering, DTOs, testing, Docker build) are defined in `.claude/rules/code-conventions.md`.
+- `WalletTransaction` rows are append-only. Never mutate or delete one to correct a balance — that table is the audit trail.
+- A user may own several wallets. Operations address a wallet by `walletId`; `userId` never identifies one.
 
 ## Temporary Rules
 
-- **Integration tests only (temporary)**: Unit test classes (suffixed `Test`) MUST NOT be created while this rule is active. Only integration test classes (suffixed `IntegrationTest`) are to be authored or maintained. This rule is temporary and supersedes — without editing — the permanent unit-testing requirements in `.claude/rules/code-conventions.md` until it is explicitly lifted.
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-`specs/003-idempotency-cache-simplification/plan.md`
-<!-- SPECKIT END -->
+- Do not create unit test classes (suffix `Test`). Author and maintain only `IntegrationTest` classes. This supersedes the unit-testing rule in `code-conventions.md` until explicitly lifted.
