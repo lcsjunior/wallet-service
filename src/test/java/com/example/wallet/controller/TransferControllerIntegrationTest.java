@@ -27,11 +27,11 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-1")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/valid-transfer.json")))
+                .content(loadJson("request/transfer/transfer-valid.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from-after-transfer.json");
-    expectBalance(TO_WALLET_ID, "response/transfer/balance-to-after-transfer.json");
+    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from.json");
+    expectBalance(TO_WALLET_ID, "response/transfer/balance-to.json");
   }
 
   @Test
@@ -42,9 +42,9 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-2")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/insufficient-amount.json")))
+                .content(loadJson("request/transfer/transfer-insufficient.json")))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(content().json(loadJson("response/transfer/insufficient-balance.json"), STRICT));
+        .andExpect(content().json(loadJson("response/transfer/error-insufficient.json"), STRICT));
   }
 
   @Test
@@ -55,9 +55,10 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-3")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/missing-wallet.json")))
+                .content(loadJson("request/transfer/transfer-missing-wallet.json")))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(loadJson("response/transfer/wallet-not-found.json"), STRICT));
+        .andExpect(
+            content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
   }
 
   @Test
@@ -68,9 +69,9 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-4")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/same-wallet.json")))
+                .content(loadJson("request/transfer/transfer-same-wallet.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/transfer/same-wallet.json"), STRICT));
+        .andExpect(content().json(loadJson("response/transfer/error-same-wallet.json"), STRICT));
   }
 
   @Test
@@ -81,10 +82,9 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-5")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/non-positive-amount.json")))
+                .content(loadJson("request/transfer/transfer-non-positive.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(
-            content().json(loadJson("response/transfer/reject-invalid-amount.json"), STRICT));
+        .andExpect(content().json(loadJson("response/transfer/error-non-positive.json"), STRICT));
   }
 
   @Test
@@ -95,7 +95,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-6")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/valid-transfer.json")))
+                .content(loadJson("request/transfer/transfer-valid.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -103,9 +103,10 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header("Correlation-Id", "tx-6")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/valid-transfer.json")))
+                .content(loadJson("request/transfer/transfer-valid.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from-after-transfer.json");
+    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from.json");
+    expectBalance(TO_WALLET_ID, "response/transfer/balance-to.json");
   }
 }

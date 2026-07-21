@@ -27,7 +27,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-1")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/valid-amount.json")))
+                .content(loadJson("request/withdrawal/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "response/withdrawal/balance-after-withdrawal.json");
@@ -41,10 +41,9 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-2")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/insufficient-amount.json")))
+                .content(loadJson("request/withdrawal/amount-insufficient.json")))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(
-            content().json(loadJson("response/withdrawal/insufficient-balance.json"), STRICT));
+        .andExpect(content().json(loadJson("response/withdrawal/error-insufficient.json"), STRICT));
 
     expectBalance(WALLET_ID, "response/withdrawal/balance-unchanged.json");
   }
@@ -57,10 +56,9 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-3")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/non-positive-amount.json")))
+                .content(loadJson("request/withdrawal/amount-non-positive.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(
-            content().json(loadJson("response/withdrawal/reject-invalid-amount.json"), STRICT));
+        .andExpect(content().json(loadJson("response/withdrawal/error-non-positive.json"), STRICT));
   }
 
   @Test
@@ -71,9 +69,10 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-4")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/valid-amount.json")))
+                .content(loadJson("request/withdrawal/amount-valid.json")))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(loadJson("response/withdrawal/wallet-not-found.json"), STRICT));
+        .andExpect(
+            content().json(loadJson("response/withdrawal/error-wallet-not-found.json"), STRICT));
   }
 
   @Test
@@ -84,7 +83,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-5")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/valid-amount.json")))
+                .content(loadJson("request/withdrawal/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -92,7 +91,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-5")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/withdrawal/valid-amount.json")))
+                .content(loadJson("request/withdrawal/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "response/withdrawal/balance-after-withdrawal.json");

@@ -27,7 +27,7 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-1")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/valid-amount.json")))
+                .content(loadJson("request/deposit/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "response/deposit/balance-after-deposit.json");
@@ -41,9 +41,9 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-2")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/non-positive-amount.json")))
+                .content(loadJson("request/deposit/amount-non-positive.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/deposit/reject-non-positive.json"), STRICT));
+        .andExpect(content().json(loadJson("response/deposit/error-non-positive.json"), STRICT));
   }
 
   @Test
@@ -54,9 +54,9 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-3")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/extra-decimals-amount.json")))
+                .content(loadJson("request/deposit/amount-extra-decimals.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/deposit/reject-extra-decimals.json"), STRICT));
+        .andExpect(content().json(loadJson("response/deposit/error-extra-decimals.json"), STRICT));
   }
 
   @Test
@@ -67,9 +67,10 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + MISSING_WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-4")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/valid-amount.json")))
+                .content(loadJson("request/deposit/amount-valid.json")))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(loadJson("response/deposit/wallet-not-found.json"), STRICT));
+        .andExpect(
+            content().json(loadJson("response/deposit/error-wallet-not-found.json"), STRICT));
   }
 
   @Test
@@ -80,7 +81,7 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/valid-amount.json")))
+                .content(loadJson("request/deposit/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -88,7 +89,7 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/valid-amount.json")))
+                .content(loadJson("request/deposit/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "response/deposit/balance-after-deposit.json");
@@ -102,7 +103,7 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/valid-amount.json")))
+                .content(loadJson("request/deposit/amount-valid.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -110,8 +111,9 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/deposit/conflicting-amount.json")))
+                .content(loadJson("request/deposit/amount-conflicting.json")))
         .andExpect(status().isConflict())
-        .andExpect(content().json(loadJson("response/deposit/correlation-conflict.json"), STRICT));
+        .andExpect(
+            content().json(loadJson("response/deposit/error-correlation-conflict.json"), STRICT));
   }
 }

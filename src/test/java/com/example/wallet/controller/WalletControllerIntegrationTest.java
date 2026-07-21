@@ -30,15 +30,15 @@ class WalletControllerIntegrationTest extends AppTests {
             .perform(
                 post("/v1/wallets")
                     .contentType(APPLICATION_JSON)
-                    .content(loadJson("request/wallet/create-wallet.json")))
+                    .content(loadJson("request/wallet/wallet-create.json")))
             .andExpect(status().isCreated())
-            .andExpect(content().json(loadJson("response/wallet/create-response.json"), LENIENT))
+            .andExpect(content().json(loadJson("response/wallet/wallet-created.json"), LENIENT))
             .andReturn()
             .getResponse()
             .getContentAsString();
 
     String createdWalletId = JsonPath.parse(response).read("$.walletId");
-    expectBalance(createdWalletId, "response/wallet/created-balance.json");
+    expectBalance(createdWalletId, "response/wallet/balance-zero.json");
   }
 
   @Test
@@ -48,15 +48,15 @@ class WalletControllerIntegrationTest extends AppTests {
         .perform(
             post("/v1/wallets")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/wallet/missing-userid.json")))
+                .content(loadJson("request/wallet/wallet-missing-userid.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/wallet/missing-userid.json"), STRICT));
+        .andExpect(content().json(loadJson("response/wallet/error-missing-userid.json"), STRICT));
   }
 
   @Test
   @DisplayName("Deve retornar o saldo atual quando a carteira existe")
   void shouldReturnCurrentBalance() throws Exception {
-    expectBalance(WALLET_ID, "response/wallet/balance-response.json");
+    expectBalance(WALLET_ID, "response/wallet/balance-zero.json");
   }
 
   @Test
@@ -65,6 +65,6 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(get("/v1/wallets/" + MISSING_WALLET_ID + "/balance"))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(loadJson("response/wallet/balance-not-found.json"), STRICT));
+        .andExpect(content().json(loadJson("response/wallet/error-wallet-not-found.json"), STRICT));
   }
 }
