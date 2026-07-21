@@ -178,9 +178,7 @@ public class TransactionService {
   }
 
   private Wallet findWallet(UUID walletId) {
-    return walletRepository
-        .findById(walletId)
-        .orElseThrow(() -> walletNotFoundException(walletId));
+    return walletRepository.findById(walletId).orElseThrow(() -> walletNotFoundException(walletId));
   }
 
   private ServiceException walletNotFoundException(UUID walletId) {
