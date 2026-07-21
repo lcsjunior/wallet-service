@@ -26,34 +26,20 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 | Language | Java 21 |
 | Framework | Spring Boot 3.5.16 (Web, Data JPA, Actuator) |
 | Database | H2 (relational, embedded, file-based at `./data/`) — source of truth |
-| Cache | Redis (idempotency retries only, non-authoritative); declarative via Spring Cache (`@Cacheable`), configured entirely through `spring.cache.type` (`redis`/`none`) and `spring.cache.redis.time-to-live` |
+| Cache | Redis — accelerates idempotency retries only, non-authoritative, optional (`CACHE_TYPE=none`) |
 | Mapping | MapStruct |
 | API Docs | SpringDoc OpenAPI (`/swagger-ui.html`) |
+| Logging | Logback; ECS JSON on the console, plain text under the `dev` profile |
 | Build | Maven Wrapper |
 | Quality | Spotless, JaCoCo, SonarQube |
 
 ## Quick Start
 
-The fastest path — starts the service and its Redis together:
+Starts the service and its Redis together — the image packages the built JAR, so the
+build step is required:
 
 ```bash
-./mvnw clean package
-docker compose up --build
-```
-
-To run it directly instead, note that the app expects Redis on `localhost:6379`
-(override with `REDIS_HOST`/`REDIS_PORT`):
-
-```bash
-docker run -d -p 6379:6379 redis:7-alpine   # or bring your own
-./mvnw spring-boot:run
-```
-
-Without Redis, start with the cache disabled — everything still works, retries just
-hit the database instead:
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.arguments=--spring.cache.type=none
+./mvnw clean package && docker compose up --build
 ```
 
 | | |
@@ -62,8 +48,12 @@ hit the database instead:
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | Health | `http://localhost:8080/actuator/health` |
 
-H2 is file-based under `./data/`, so balances survive a restart. Delete that folder
-to start from a clean database.
+H2 is file-based under `./data/`, so balances survive a restart. Delete that folder to
+start from a clean database.
+
+Redis is optional — `CACHE_TYPE=none` runs the app entirely off the database. It is also
+optional at runtime: a Redis that dies is logged at `WARN` and the request falls through
+to the database, so nothing breaks and idempotency still holds.
 
 ## API Endpoints
 
@@ -140,17 +130,12 @@ Validation failures add an `errors` array of `{field, message}` entries.
 
 ## Tests
 
-```bash
-./mvnw test
-```
-
-> Code conventions (architecture layout, DTOs, testing conventions) are defined in `.claude/rules/code-conventions.md`.
+Integration tests run the full stack against an in-memory H2 and a Testcontainers Redis,
+so **Docker must be running**.
 
 ## CI/CD
 
-- **Automatic formatting**: the repository versions a pre-commit hook at `.githooks/pre-commit` that runs `./mvnw spotless:apply` before every commit. Enable it once per clone with:
-  ```bash
-  git config core.hooksPath .githooks
-  ```
-- **Pull requests to `main`**: `.github/workflows/ci.yml` runs two jobs on every PR — `test` (`./mvnw clean test` with a JaCoCo report) and `sonar` (static analysis via `sonar-maven-plugin`, using the `SONAR_TOKEN`/`SONAR_HOST_URL` secrets). To ensure no change is merged without passing both, manually configure the `Test (JaCoCo)` and `Static Analysis (SonarQube)` checks as **required status checks** under **Settings → Branches → Branch protection rules** for `main` — this is a GitHub setting, not a versionable file in the repository.
+- **Automatic formatting**: a versioned pre-commit hook formats the code before every commit. Enable it once per clone with `git config core.hooksPath .githooks`.
+- **Pull requests to `main`**: `.github/workflows/ci.yml` runs `test` (JaCoCo report) and `sonar` (needs the `SONAR_TOKEN`/`SONAR_HOST_URL` secrets). Both run the suite, so both need a Docker daemon — `ubuntu-latest` has one, a self-hosted runner may not.
+- **Required checks**: make `Test (JaCoCo)` and `Static Analysis (SonarQube)` required under **Settings → Branches** for `main`. It is a GitHub setting, not a file in the repo.
 
