@@ -1,123 +1,75 @@
 package com.example.wallet.controller;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static com.example.wallet.utils.JsonUtils.loadJson;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
+import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.wallet.entity.Wallet;
-import com.example.wallet.repository.WalletRepository;
-import com.example.wallet.support.JsonMocks;
-import java.util.Map;
-import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
+import com.example.wallet.AppTests;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.jdbc.Sql;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-class DepositControllerIntegrationTest {
+@Sql(scripts = "/mock/sql/deposit-seed.sql", executionPhase = BEFORE_TEST_METHOD)
+class DepositControllerIntegrationTest extends AppTests {
 
-  @Autowired private MockMvc mockMvc;
-
-  @Autowired private WalletRepository walletRepository;
-
-  private UUID walletId;
-
-  @BeforeEach
-  void setUp() {
-    var wallet = Wallet.of(UUID.randomUUID());
-    walletRepository.saveAndFlush(wallet);
-    walletId = wallet.getId();
-  }
+  private static final String WALLET_ID = "6163fb26-3a06-4080-a987-35c5e5a17297";
+  private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
   @Test
   @DisplayName("Deve depositar valor válido e retornar 204")
   void shouldDepositWhenAmountIsValid() throws Exception {
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-1")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"100.00\"}"))
+                .content(loadJson("request/deposit/valid-amount.json")))
         .andExpect(status().isNoContent());
 
-    var wallet = walletRepository.findById(walletId).orElseThrow();
-    assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
+    expectBalance(WALLET_ID, "response/deposit/balance-after-deposit.json");
   }
 
   @Test
   @DisplayName("Deve rejeitar depósito com valor zero ou negativo")
   void shouldRejectNonPositiveAmount() throws Exception {
-    var expected =
-        JsonMocks.load(
-            "common/validation-error.json",
-            Map.of(
-                "instance",
-                "/v1/wallets/" + walletId + "/deposits",
-                "errors",
-                JsonMocks.load("common/errors-amount-positive.json")));
-
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-2")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"-10.00\"}"))
+                .content(loadJson("request/deposit/non-positive-amount.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/deposit/reject-non-positive.json"), STRICT));
   }
 
   @Test
   @DisplayName("Deve rejeitar depósito com mais de duas casas decimais")
   void shouldRejectAmountWithExtraDecimals() throws Exception {
-    var expected =
-        JsonMocks.load(
-            "common/validation-error.json",
-            Map.of(
-                "instance",
-                "/v1/wallets/" + walletId + "/deposits",
-                "errors",
-                JsonMocks.load("common/errors-amount-scale.json")));
-
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-3")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"0.015\"}"))
+                .content(loadJson("request/deposit/extra-decimals-amount.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/deposit/reject-extra-decimals.json"), STRICT));
   }
 
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
   void shouldReturnNotFoundForMissingWallet() throws Exception {
-    var missingWalletId = UUID.randomUUID();
-    var expected =
-        JsonMocks.load(
-            "common/error.json",
-            Map.of(
-                "status",
-                "404",
-                "detail",
-                "Wallet not found",
-                "instance",
-                "/v1/wallets/" + missingWalletId + "/deposits"));
-
     mockMvc
         .perform(
-            post("/v1/wallets/" + missingWalletId + "/deposits")
+            post("/v1/wallets/" + MISSING_WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-4")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"10.00\"}"))
+                .content(loadJson("request/deposit/valid-amount.json")))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/deposit/wallet-not-found.json"), STRICT));
   }
 
   @Test
@@ -125,22 +77,21 @@ class DepositControllerIntegrationTest {
   void shouldReplayRetriedCorrelationId() throws Exception {
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"100.00\"}"))
+                .content(loadJson("request/deposit/valid-amount.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"100.00\"}"))
+                .content(loadJson("request/deposit/valid-amount.json")))
         .andExpect(status().isNoContent());
 
-    var wallet = walletRepository.findById(walletId).orElseThrow();
-    assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
+    expectBalance(WALLET_ID, "response/deposit/balance-after-deposit.json");
   }
 
   @Test
@@ -148,27 +99,19 @@ class DepositControllerIntegrationTest {
   void shouldConflictOnReusedCorrelationId() throws Exception {
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"100.00\"}"))
+                .content(loadJson("request/deposit/valid-amount.json")))
         .andExpect(status().isNoContent());
-
-    var expected =
-        JsonMocks.load(
-            "common/error.json",
-            Map.of(
-                "status", "409",
-                "detail", "Correlation-Id already used with different parameters",
-                "instance", "/v1/wallets/" + walletId + "/deposits"));
 
     mockMvc
         .perform(
-            post("/v1/wallets/" + walletId + "/deposits")
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content("{\"amount\":\"999.00\"}"))
+                .content(loadJson("request/deposit/conflicting-amount.json")))
         .andExpect(status().isConflict())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/deposit/correlation-conflict.json"), STRICT));
   }
 }

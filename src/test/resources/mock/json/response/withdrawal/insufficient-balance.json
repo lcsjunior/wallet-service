@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Business violation",
+  "status": 422,
+  "detail": "Insufficient balance",
+  "instance": "/v1/wallets/35a907a7-9217-4e12-b1f2-5d80f579f9b0/withdrawals"
+}

@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Business violation",
+  "status": 422,
+  "detail": "Insufficient balance",
+  "instance": "/v1/transfers"
+}

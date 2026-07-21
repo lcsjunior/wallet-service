@@ -1,115 +1,70 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.utils.JsonUtils.loadJson;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
+import static org.springframework.test.json.JsonCompareMode.LENIENT;
+import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.example.wallet.support.JsonMocks;
+import com.example.wallet.AppTests;
 import com.jayway.jsonpath.JsonPath;
-import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.jdbc.Sql;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-class WalletControllerIntegrationTest {
+@Sql(scripts = "/mock/sql/wallet-seed.sql", executionPhase = BEFORE_TEST_METHOD)
+class WalletControllerIntegrationTest extends AppTests {
 
-  @Autowired private MockMvc mockMvc;
+  private static final String WALLET_ID = "8671a4d3-63ec-4129-af91-21f4980ee865";
+  private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
   @Test
   @DisplayName("Deve criar carteira com saldo zero para um userId informado")
   void shouldCreateWalletWithZeroBalance() throws Exception {
-    var userId = UUID.randomUUID().toString();
-
-    MvcResult result =
+    var response =
         mockMvc
             .perform(
                 post("/v1/wallets")
                     .contentType(APPLICATION_JSON)
-                    .content("{\"userId\":\"" + userId + "\"}"))
+                    .content(loadJson("request/wallet/create-wallet.json")))
             .andExpect(status().isCreated())
-            .andReturn();
+            .andExpect(content().json(loadJson("response/wallet/create-response.json"), LENIENT))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
-    var actual = result.getResponse().getContentAsString();
-    String walletId = JsonPath.parse(actual).read("$.walletId");
-    String createdAt = JsonPath.parse(actual).read("$.createdAt");
-    String expected =
-        JsonMocks.load(
-            "wallet/create-response.json",
-            Map.of("walletId", walletId, "userId", userId, "createdAt", createdAt));
-
-    JSONAssert.assertEquals(expected, actual, true);
+    String createdWalletId = JsonPath.parse(response).read("$.walletId");
+    expectBalance(createdWalletId, "response/wallet/created-balance.json");
   }
 
   @Test
   @DisplayName("Deve rejeitar criação de carteira quando o userId não é informado")
   void shouldRejectMissingUserId() throws Exception {
-    var expected =
-        JsonMocks.load(
-            "common/validation-error.json",
-            Map.of(
-                "instance",
-                "/v1/wallets",
-                "errors",
-                JsonMocks.load("common/errors-userid-missing.json")));
-
     mockMvc
-        .perform(post("/v1/wallets").contentType(APPLICATION_JSON).content("{}"))
+        .perform(
+            post("/v1/wallets")
+                .contentType(APPLICATION_JSON)
+                .content(loadJson("request/wallet/missing-userid.json")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/wallet/missing-userid.json"), STRICT));
   }
 
   @Test
   @DisplayName("Deve retornar o saldo atual quando a carteira existe")
   void shouldReturnCurrentBalance() throws Exception {
-    var userId = UUID.randomUUID().toString();
-    MvcResult createResult =
-        mockMvc
-            .perform(
-                post("/v1/wallets")
-                    .contentType(APPLICATION_JSON)
-                    .content("{\"userId\":\"" + userId + "\"}"))
-            .andReturn();
-    String walletId =
-        JsonPath.parse(createResult.getResponse().getContentAsString()).read("$.walletId");
-
-    var expected =
-        JsonMocks.load(
-            "wallet/balance-response.json", Map.of("walletId", walletId, "balance", "0.00"));
-
-    mockMvc
-        .perform(get("/v1/wallets/" + walletId + "/balance"))
-        .andExpect(status().isOk())
-        .andExpect(content().json(expected, true));
+    expectBalance(WALLET_ID, "response/wallet/balance-response.json");
   }
 
   @Test
   @DisplayName("Deve retornar 404 ao consultar saldo de uma carteira inexistente")
   void shouldReturnNotFoundForMissingWallet() throws Exception {
-    var walletId = UUID.randomUUID();
-    var expected =
-        JsonMocks.load(
-            "common/error.json",
-            Map.of(
-                "status",
-                "404",
-                "detail",
-                "Wallet not found",
-                "instance",
-                "/v1/wallets/" + walletId + "/balance"));
-
     mockMvc
-        .perform(get("/v1/wallets/" + walletId + "/balance"))
+        .perform(get("/v1/wallets/" + MISSING_WALLET_ID + "/balance"))
         .andExpect(status().isNotFound())
-        .andExpect(content().json(expected, true));
+        .andExpect(content().json(loadJson("response/wallet/balance-not-found.json"), STRICT));
   }
 }
