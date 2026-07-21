@@ -1,5 +1,6 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.utils.JsonUtils.fieldJson;
 import static com.example.wallet.utils.JsonUtils.loadJson;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
@@ -20,68 +21,74 @@ class DepositControllerIntegrationTest extends AppTests {
   private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
   @Test
-  @DisplayName("Deve depositar valor válido e retornar 204")
-  void shouldDepositWhenAmountIsValid() throws Exception {
+  @DisplayName("Deve retornar 204 e creditar o saldo quando o valor é válido")
+  void shouldCreditBalanceWhenAmountIsValid() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-1")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("100.00")))
+                .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "100.00");
   }
 
   @Test
-  @DisplayName("Deve rejeitar depósito com valor zero ou negativo")
-  void shouldRejectNonPositiveAmount() throws Exception {
+  @DisplayName("Deve retornar 400 quando o valor é zero ou negativo")
+  void shouldRejectWhenAmountIsNotPositive() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-2")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("-10.00")))
+                .content(fieldJson("amount", "-10.00")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/deposit/error-non-positive.json"), STRICT));
+
+    expectBalance(WALLET_ID, "0.00");
   }
 
   @Test
-  @DisplayName("Deve rejeitar depósito com mais de duas casas decimais")
-  void shouldRejectAmountWithExtraDecimals() throws Exception {
+  @DisplayName("Deve retornar 400 quando o valor tem mais de duas casas decimais")
+  void shouldRejectWhenAmountHasExtraDecimals() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-3")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("0.015")))
+                .content(fieldJson("amount", "0.015")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/deposit/error-extra-decimals.json"), STRICT));
+
+    expectBalance(WALLET_ID, "0.00");
   }
 
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
-  void shouldReturnNotFoundForMissingWallet() throws Exception {
+  void shouldRejectWhenWalletDoesNotExist() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-4")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("100.00")))
+                .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/deposit/error-wallet-not-found.json"), STRICT));
+
+    expectBalance(WALLET_ID, "0.00");
   }
 
   @Test
-  @DisplayName("Não deve duplicar o efeito ao repetir o mesmo Correlation-Id")
-  void shouldReplayRetriedCorrelationId() throws Exception {
+  @DisplayName("Deve retornar 204 sem creditar de novo quando o Correlation-Id se repete")
+  void shouldIgnoreRepeatedCorrelationId() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("100.00")))
+                .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -89,21 +96,21 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-5")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("100.00")))
+                .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "100.00");
   }
 
   @Test
-  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com valor diferente")
-  void shouldConflictOnReusedCorrelationId() throws Exception {
+  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
+  void shouldRejectWhenCorrelationIdReused() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("100.00")))
+                .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -111,9 +118,11 @@ class DepositControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/deposits")
                 .header("Correlation-Id", "dep-6")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("999.00")))
+                .content(fieldJson("amount", "999.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content().json(loadJson("response/deposit/error-correlation-conflict.json"), STRICT));
+
+    expectBalance(WALLET_ID, "100.00");
   }
 }

@@ -18,4 +18,12 @@ public final class JsonUtils {
       throw new UncheckedIOException(ex);
     }
   }
+
+  public static String emptyJson() {
+    return "{}";
+  }
+
+  public static String fieldJson(String field, String value) {
+    return "{\"" + field + "\":\"" + value + "\"}";
+  }
 }

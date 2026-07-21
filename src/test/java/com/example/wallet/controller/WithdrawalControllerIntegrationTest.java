@@ -1,5 +1,6 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.utils.JsonUtils.fieldJson;
 import static com.example.wallet.utils.JsonUtils.loadJson;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
@@ -20,14 +21,14 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
   @Test
-  @DisplayName("Deve sacar valor válido e retornar 204")
-  void shouldWithdrawWhenAmountIsValid() throws Exception {
+  @DisplayName("Deve retornar 204 e debitar o saldo quando o valor é válido")
+  void shouldDebitBalanceWhenAmountIsValid() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-1")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("30.00")))
+                .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "70.00");
@@ -35,13 +36,13 @@ class WithdrawalControllerIntegrationTest extends AppTests {
 
   @Test
   @DisplayName("Deve retornar 422 quando o saldo é insuficiente")
-  void shouldRejectInsufficientBalance() throws Exception {
+  void shouldRejectWhenBalanceIsInsufficient() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-2")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("1000.00")))
+                .content(fieldJson("amount", "1000.00")))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().json(loadJson("response/withdrawal/error-insufficient.json"), STRICT));
 
@@ -49,41 +50,45 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve rejeitar saque com valor inválido")
-  void shouldRejectInvalidAmount() throws Exception {
+  @DisplayName("Deve retornar 400 quando o valor é zero ou negativo")
+  void shouldRejectWhenAmountIsNotPositive() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-3")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("0")))
+                .content(fieldJson("amount", "0")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/withdrawal/error-non-positive.json"), STRICT));
+
+    expectBalance(WALLET_ID, "100.00");
   }
 
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
-  void shouldReturnNotFoundForMissingWallet() throws Exception {
+  void shouldRejectWhenWalletDoesNotExist() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-4")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("30.00")))
+                .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/withdrawal/error-wallet-not-found.json"), STRICT));
+
+    expectBalance(WALLET_ID, "100.00");
   }
 
   @Test
-  @DisplayName("Não deve duplicar o efeito ao repetir o mesmo Correlation-Id")
-  void shouldReplayRetriedCorrelationId() throws Exception {
+  @DisplayName("Deve retornar 204 sem debitar de novo quando o Correlation-Id se repete")
+  void shouldIgnoreRepeatedCorrelationId() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-5")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("30.00")))
+                .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -91,7 +96,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header("Correlation-Id", "wd-5")
                 .contentType(APPLICATION_JSON)
-                .content(amountJson("30.00")))
+                .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
 
     expectBalance(WALLET_ID, "70.00");
