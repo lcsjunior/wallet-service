@@ -49,6 +49,7 @@ public class WalletTransaction {
 
   protected WalletTransaction() {}
 
+  @SuppressWarnings("java:S107")
   private WalletTransaction(
       UUID id,
       UUID walletId,
