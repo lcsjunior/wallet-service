@@ -37,14 +37,12 @@ public class WalletService {
     return walletMapper.toWalletResponse(wallet);
   }
 
-  @Transactional(readOnly = true)
   public BalanceResponse getCurrentBalance(UUID walletId) {
     var wallet = findWallet(walletId);
     return walletMapper.toBalanceResponse(wallet);
   }
 
-  @Transactional(readOnly = true)
-  public Wallet findWallet(UUID walletId) {
+  private Wallet findWallet(UUID walletId) {
     return walletRepository.findById(walletId).orElseThrow(() -> walletNotFoundException(walletId));
   }
 

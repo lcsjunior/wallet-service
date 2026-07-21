@@ -12,6 +12,5 @@ public interface WalletMapper {
   @Mapping(target = "walletId", source = "id")
   WalletResponse toWalletResponse(Wallet wallet);
 
-  @Mapping(target = "walletId", source = "id")
   BalanceResponse toBalanceResponse(Wallet wallet);
 }

@@ -11,7 +11,7 @@ import com.example.wallet.entity.TransactionType;
 import com.example.wallet.entity.Wallet;
 import com.example.wallet.entity.WalletTransaction;
 import com.example.wallet.exception.ServiceException;
-import com.example.wallet.repository.IdempotencyEntryRepository;
+import com.example.wallet.repository.IdempotencyRepository;
 import com.example.wallet.repository.WalletRepository;
 import com.example.wallet.repository.WalletTransactionRepository;
 import java.math.BigDecimal;
@@ -30,21 +30,20 @@ public class TransactionService {
 
   private final WalletRepository walletRepository;
   private final WalletTransactionRepository walletTransactionRepository;
-  private final IdempotencyEntryRepository idempotencyEntryRepository;
+  private final IdempotencyRepository idempotencyRepository;
 
   public TransactionService(
       WalletRepository walletRepository,
       WalletTransactionRepository walletTransactionRepository,
-      IdempotencyEntryRepository idempotencyEntryRepository) {
+      IdempotencyRepository idempotencyRepository) {
     this.walletRepository = walletRepository;
     this.walletTransactionRepository = walletTransactionRepository;
-    this.idempotencyEntryRepository = idempotencyEntryRepository;
+    this.idempotencyRepository = idempotencyRepository;
   }
 
   @Transactional
   public void deposit(UUID walletId, BigDecimal amount, String correlationId) {
     var fingerprint = buildFingerprint(OperationType.DEPOSIT, walletId.toString(), amount);
-
     if (isDuplicateRequest(correlationId, fingerprint)) {
       return;
     }
@@ -74,7 +73,6 @@ public class TransactionService {
   @Transactional
   public void withdraw(UUID walletId, BigDecimal amount, String correlationId) {
     var fingerprint = buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), amount);
-
     if (isDuplicateRequest(correlationId, fingerprint)) {
       return;
     }
@@ -108,14 +106,12 @@ public class TransactionService {
     validateDistinctWallets(fromWalletId, toWalletId);
     var fingerprint =
         buildFingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
-
     if (isDuplicateRequest(correlationId, fingerprint)) {
       return;
     }
 
     var fromWallet = findWallet(fromWalletId);
     var toWallet = findWallet(toWalletId);
-
     validateSufficientBalance(fromWallet, amount);
     fromWallet.debit(amount);
     toWallet.credit(amount);
@@ -160,7 +156,7 @@ public class TransactionService {
   }
 
   private boolean isDuplicateRequest(String correlationId, String fingerprint) {
-    var entryOpt = idempotencyEntryRepository.findById(correlationId);
+    var entryOpt = idempotencyRepository.findById(correlationId);
     if (entryOpt.isEmpty()) {
       return false;
     }
@@ -196,7 +192,6 @@ public class TransactionService {
 
   private void persistIdempotency(
       String correlationId, OperationType operationType, String fingerprint) {
-    var entry = IdempotencyEntry.of(correlationId, operationType, fingerprint);
-    idempotencyEntryRepository.save(entry);
+    idempotencyRepository.save(IdempotencyEntry.of(correlationId, operationType, fingerprint));
   }
 }

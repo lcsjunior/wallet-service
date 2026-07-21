@@ -4,6 +4,5 @@ import static com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
-import java.util.UUID;
 
-public record BalanceResponse(UUID walletId, @JsonFormat(shape = STRING) BigDecimal balance) {}
+public record BalanceResponse(@JsonFormat(shape = STRING) BigDecimal balance) {}

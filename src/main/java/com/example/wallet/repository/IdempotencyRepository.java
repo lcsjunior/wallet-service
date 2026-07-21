@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface IdempotencyEntryRepository extends JpaRepository<IdempotencyEntry, String> {
+public interface IdempotencyRepository extends JpaRepository<IdempotencyEntry, String> {
 
   @Override
   @Cacheable(cacheNames = "idempotencyEntry", key = "#correlationId", unless = "#result == null")
