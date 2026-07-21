@@ -4,7 +4,6 @@ import static com.example.wallet.exception.ErrorCode.CORRELATION_ID_CONFLICT;
 import static com.example.wallet.exception.ErrorCode.INSUFFICIENT_BALANCE;
 import static com.example.wallet.exception.ErrorCode.SAME_WALLET_TRANSFER;
 import static com.example.wallet.exception.ErrorCode.WALLET_NOT_FOUND;
-import static java.math.RoundingMode.UNNECESSARY;
 
 import com.example.wallet.dto.TransactionResponse;
 import com.example.wallet.dto.TransferResponse;
@@ -52,9 +51,7 @@ public class TransactionService {
 
   @Transactional
   public TransactionResponse deposit(UUID walletId, BigDecimal amount, String correlationId) {
-    var normalizedAmount = normalizeScale(amount);
-    var fingerprint =
-        buildFingerprint(OperationType.DEPOSIT, walletId.toString(), normalizedAmount);
+    var fingerprint = buildFingerprint(OperationType.DEPOSIT, walletId.toString(), amount);
 
     var existingResponse = replayIfIdempotent(correlationId, fingerprint);
     if (existingResponse.isPresent()) {
@@ -62,36 +59,33 @@ public class TransactionService {
     }
 
     var wallet = findWalletForUpdate(walletId);
-    wallet.credit(normalizedAmount);
+    wallet.credit(amount);
     walletRepository.save(wallet);
 
     var transaction =
         WalletTransaction.of(
             wallet.getId(),
             TransactionType.DEPOSIT,
-            normalizedAmount,
+            amount,
             wallet.getBalance(),
             correlationId,
             null);
     walletTransactionRepository.save(transaction);
 
     var response =
-        new TransactionResponse(
-            wallet.getId(), wallet.getBalance(), normalizedAmount, correlationId);
+        new TransactionResponse(wallet.getId(), wallet.getBalance(), amount, correlationId);
     persistIdempotencyEntry(correlationId, OperationType.DEPOSIT, fingerprint, response);
     log.info(
         LOG_PREFIX + "Deposit completed | walletId={}, amount={}, correlationId={}",
         walletId,
-        normalizedAmount,
+        amount,
         correlationId);
     return response;
   }
 
   @Transactional
   public TransactionResponse withdraw(UUID walletId, BigDecimal amount, String correlationId) {
-    var normalizedAmount = normalizeScale(amount);
-    var fingerprint =
-        buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), normalizedAmount);
+    var fingerprint = buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), amount);
 
     var existingResponse = replayIfIdempotent(correlationId, fingerprint);
     if (existingResponse.isPresent()) {
@@ -99,28 +93,27 @@ public class TransactionService {
     }
 
     var wallet = findWalletForUpdate(walletId);
-    validateSufficientBalance(wallet, normalizedAmount);
-    wallet.debit(normalizedAmount);
+    validateSufficientBalance(wallet, amount);
+    wallet.debit(amount);
     walletRepository.save(wallet);
 
     var transaction =
         WalletTransaction.of(
             wallet.getId(),
             TransactionType.WITHDRAWAL,
-            normalizedAmount,
+            amount,
             wallet.getBalance(),
             correlationId,
             null);
     walletTransactionRepository.save(transaction);
 
     var response =
-        new TransactionResponse(
-            wallet.getId(), wallet.getBalance(), normalizedAmount, correlationId);
+        new TransactionResponse(wallet.getId(), wallet.getBalance(), amount, correlationId);
     persistIdempotencyEntry(correlationId, OperationType.WITHDRAWAL, fingerprint, response);
     log.info(
         LOG_PREFIX + "Withdrawal completed | walletId={}, amount={}, correlationId={}",
         walletId,
-        normalizedAmount,
+        amount,
         correlationId);
     return response;
   }
@@ -129,10 +122,8 @@ public class TransactionService {
   public TransferResponse transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
     validateDistinctWallets(fromWalletId, toWalletId);
-    var normalizedAmount = normalizeScale(amount);
     var fingerprint =
-        buildFingerprint(
-            OperationType.TRANSFER, fromWalletId + "->" + toWalletId, normalizedAmount);
+        buildFingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
 
     var existingResultBody = findExistingResultBody(correlationId, fingerprint);
     if (existingResultBody.isPresent()) {
@@ -147,9 +138,9 @@ public class TransactionService {
     var fromWallet = firstWalletId.equals(fromWalletId) ? firstWallet : secondWallet;
     var toWallet = firstWalletId.equals(fromWalletId) ? secondWallet : firstWallet;
 
-    validateSufficientBalance(fromWallet, normalizedAmount);
-    fromWallet.debit(normalizedAmount);
-    toWallet.credit(normalizedAmount);
+    validateSufficientBalance(fromWallet, amount);
+    fromWallet.debit(amount);
+    toWallet.credit(amount);
     walletRepository.save(fromWallet);
     walletRepository.save(toWallet);
 
@@ -157,7 +148,7 @@ public class TransactionService {
         WalletTransaction.of(
             fromWallet.getId(),
             TransactionType.TRANSFER_DEBIT,
-            normalizedAmount,
+            amount,
             fromWallet.getBalance(),
             correlationId,
             toWallet.getId()));
@@ -165,7 +156,7 @@ public class TransactionService {
         WalletTransaction.of(
             toWallet.getId(),
             TransactionType.TRANSFER_CREDIT,
-            normalizedAmount,
+            amount,
             toWallet.getBalance(),
             correlationId,
             fromWallet.getId()));
@@ -176,7 +167,7 @@ public class TransactionService {
             fromWallet.getBalance(),
             toWallet.getId(),
             toWallet.getBalance(),
-            normalizedAmount,
+            amount,
             correlationId);
     persistIdempotencyEntry(correlationId, OperationType.TRANSFER, fingerprint, response);
     log.info(
@@ -184,7 +175,7 @@ public class TransactionService {
             + "Transfer completed | fromWalletId={}, toWalletId={}, amount={}, correlationId={}",
         fromWalletId,
         toWalletId,
-        normalizedAmount,
+        amount,
         correlationId);
     return response;
   }
@@ -212,10 +203,6 @@ public class TransactionService {
     if (fromWalletId.equals(toWalletId)) {
       throw new ServiceException(SAME_WALLET_TRANSFER);
     }
-  }
-
-  private BigDecimal normalizeScale(BigDecimal amount) {
-    return amount.setScale(2, UNNECESSARY);
   }
 
   private String buildFingerprint(OperationType operationType, String key, BigDecimal amount) {
