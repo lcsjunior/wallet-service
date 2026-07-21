@@ -12,6 +12,10 @@ public final class JsonMocks {
 
   private JsonMocks() {}
 
+  public static String load(String relativePath) {
+    return load(relativePath, Map.of());
+  }
+
   public static String load(String relativePath, Map<String, String> replacements) {
     String content = readFile(relativePath);
     for (Map.Entry<String, String> replacement : replacements.entrySet()) {

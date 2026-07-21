@@ -3,6 +3,7 @@ package com.example.wallet.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.entity.Wallet;
@@ -14,12 +15,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,18 +55,8 @@ class WithdrawalControllerIntegrationTest {
 
   @Test
   @DisplayName("Deve retornar 422 quando o saldo é insuficiente")
-  void shouldReturnUnprocessableEntityWhenBalanceIsInsufficient() throws Exception {
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/v1/wallets/" + walletId + "/withdrawals")
-                    .header("Correlation-Id", "wd-2")
-                    .contentType(APPLICATION_JSON)
-                    .content("{\"amount\":\"1000.00\"}"))
-            .andExpect(status().isUnprocessableEntity())
-            .andReturn();
-
-    String expected =
+  void shouldRejectInsufficientBalance() throws Exception {
+    var expected =
         JsonMocks.load(
             "common/error.json",
             Map.of(
@@ -77,7 +66,15 @@ class WithdrawalControllerIntegrationTest {
                 "Wallet has insufficient balance for this operation",
                 "instance",
                 "/v1/wallets/" + walletId + "/withdrawals"));
-    JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), true);
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + walletId + "/withdrawals")
+                .header("Correlation-Id", "wd-2")
+                .contentType(APPLICATION_JSON)
+                .content("{\"amount\":\"1000.00\"}"))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(content().json(expected, true));
 
     var wallet = walletRepository.findById(walletId).orElseThrow();
     assertThat(wallet.getBalance()).isEqualByComparingTo("100.00");
@@ -85,44 +82,31 @@ class WithdrawalControllerIntegrationTest {
 
   @Test
   @DisplayName("Deve rejeitar saque com valor inválido")
-  void shouldRejectWithdrawalWhenAmountIsInvalid() throws Exception {
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/v1/wallets/" + walletId + "/withdrawals")
-                    .header("Correlation-Id", "wd-3")
-                    .contentType(APPLICATION_JSON)
-                    .content("{\"amount\":\"0\"}"))
-            .andExpect(status().isBadRequest())
-            .andReturn();
-
-    String expected =
+  void shouldRejectInvalidAmount() throws Exception {
+    var expected =
         JsonMocks.load(
             "common/validation-error.json",
             Map.of(
                 "instance",
                 "/v1/wallets/" + walletId + "/withdrawals",
                 "errors",
-                "[{\"field\":\"amount\",\"message\":\"Amount must be greater than zero\"}]"));
-    JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), true);
+                JsonMocks.load("common/errors-amount-positive.json")));
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + walletId + "/withdrawals")
+                .header("Correlation-Id", "wd-3")
+                .contentType(APPLICATION_JSON)
+                .content("{\"amount\":\"0\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json(expected, true));
   }
 
   @Test
   @DisplayName("Deve retornar 404 quando a carteira não existe")
-  void shouldReturnNotFoundWhenWalletDoesNotExist() throws Exception {
+  void shouldReturnNotFoundForMissingWallet() throws Exception {
     var missingWalletId = UUID.randomUUID();
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/v1/wallets/" + missingWalletId + "/withdrawals")
-                    .header("Correlation-Id", "wd-4")
-                    .contentType(APPLICATION_JSON)
-                    .content("{\"amount\":\"10.00\"}"))
-            .andExpect(status().isNotFound())
-            .andReturn();
-
-    String expected =
+    var expected =
         JsonMocks.load(
             "common/error.json",
             Map.of(
@@ -132,12 +116,20 @@ class WithdrawalControllerIntegrationTest {
                 "Wallet not found",
                 "instance",
                 "/v1/wallets/" + missingWalletId + "/withdrawals"));
-    JSONAssert.assertEquals(expected, result.getResponse().getContentAsString(), true);
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + missingWalletId + "/withdrawals")
+                .header("Correlation-Id", "wd-4")
+                .contentType(APPLICATION_JSON)
+                .content("{\"amount\":\"10.00\"}"))
+        .andExpect(status().isNotFound())
+        .andExpect(content().json(expected, true));
   }
 
   @Test
   @DisplayName("Não deve duplicar o efeito ao repetir o mesmo Correlation-Id")
-  void shouldNotDuplicateEffectWhenCorrelationIdIsRetried() throws Exception {
+  void shouldReplayRetriedCorrelationId() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + walletId + "/withdrawals")

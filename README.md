@@ -25,7 +25,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 | Language | Java 21 |
 | Framework | Spring Boot 3.5.16 (Web, Data JPA, Actuator) |
 | Database | H2 (relational, embedded) — source of truth |
-| Cache | Redis (idempotency retries only, non-authoritative); declarative via Spring Cache (`@Cacheable`/`@CachePut`), configured entirely through `spring.cache.type` (`redis`/`none`) and `spring.cache.redis.time-to-live` |
+| Cache | Redis (idempotency retries only, non-authoritative); declarative via Spring Cache (`@Cacheable`), configured entirely through `spring.cache.type` (`redis`/`none`) and `spring.cache.redis.time-to-live` |
 | Mapping | MapStruct |
 | API Docs | SpringDoc OpenAPI (`/swagger-ui.html`) |
 | Build | Maven Wrapper |

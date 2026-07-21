@@ -19,7 +19,6 @@ import com.example.wallet.repository.WalletTransactionRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
-import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +49,11 @@ public class TransactionService {
   }
 
   @Transactional
-  public TransactionResponse deposit(UUID walletId, BigDecimal amount, String correlationId) {
+  public void deposit(UUID walletId, BigDecimal amount, String correlationId) {
     var fingerprint = buildFingerprint(OperationType.DEPOSIT, walletId.toString(), amount);
 
-    var existingResponse = replayIfIdempotent(correlationId, fingerprint);
-    if (existingResponse.isPresent()) {
-      return existingResponse.get();
+    if (isReplay(correlationId, fingerprint)) {
+      return;
     }
 
     var wallet = findWalletForUpdate(walletId);
@@ -80,16 +78,14 @@ public class TransactionService {
         walletId,
         amount,
         correlationId);
-    return response;
   }
 
   @Transactional
-  public TransactionResponse withdraw(UUID walletId, BigDecimal amount, String correlationId) {
+  public void withdraw(UUID walletId, BigDecimal amount, String correlationId) {
     var fingerprint = buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), amount);
 
-    var existingResponse = replayIfIdempotent(correlationId, fingerprint);
-    if (existingResponse.isPresent()) {
-      return existingResponse.get();
+    if (isReplay(correlationId, fingerprint)) {
+      return;
     }
 
     var wallet = findWalletForUpdate(walletId);
@@ -115,19 +111,17 @@ public class TransactionService {
         walletId,
         amount,
         correlationId);
-    return response;
   }
 
   @Transactional
-  public TransferResponse transfer(
+  public void transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
     validateDistinctWallets(fromWalletId, toWalletId);
     var fingerprint =
         buildFingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
 
-    var existingResultBody = findExistingResultBody(correlationId, fingerprint);
-    if (existingResultBody.isPresent()) {
-      return readTransferResponse(existingResultBody.get());
+    if (isReplay(correlationId, fingerprint)) {
+      return;
     }
 
     var firstWalletId = fromWalletId.compareTo(toWalletId) <= 0 ? fromWalletId : toWalletId;
@@ -177,7 +171,6 @@ public class TransactionService {
         toWalletId,
         amount,
         correlationId);
-    return response;
   }
 
   private Wallet findWalletForUpdate(UUID walletId) {
@@ -209,48 +202,20 @@ public class TransactionService {
     return operationType + ":" + key + ":" + amount.toPlainString();
   }
 
-  private Optional<TransactionResponse> replayIfIdempotent(
-      String correlationId, String fingerprint) {
-    return findExistingResultBody(correlationId, fingerprint).map(this::readTransactionResponse);
+  private boolean isReplay(String correlationId, String fingerprint) {
+    var existing = idempotencyEntryRepository.findById(correlationId);
+    if (existing.isEmpty()) {
+      return false;
+    }
+    validateFingerprint(correlationId, fingerprint, existing.get().getRequestFingerprint());
+    return true;
   }
 
-  private Optional<String> findExistingResultBody(String correlationId, String fingerprint) {
-    return idempotencyEntryRepository
-        .findById(correlationId)
-        .map(
-            entry ->
-                validateFingerprintAndUnwrap(
-                    correlationId,
-                    fingerprint,
-                    entry.getRequestFingerprint(),
-                    entry.getResultBody()));
-  }
-
-  private String validateFingerprintAndUnwrap(
-      String correlationId,
-      String expectedFingerprint,
-      String actualFingerprint,
-      String resultBody) {
+  private void validateFingerprint(
+      String correlationId, String expectedFingerprint, String actualFingerprint) {
     if (!actualFingerprint.equals(expectedFingerprint)) {
       log.warn(LOG_PREFIX + "Correlation-Id conflict | correlationId={}", correlationId);
       throw new ServiceException(CORRELATION_ID_CONFLICT);
-    }
-    return resultBody;
-  }
-
-  private TransactionResponse readTransactionResponse(String resultBody) {
-    try {
-      return objectMapper.readValue(resultBody, TransactionResponse.class);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException("Corrupted idempotency entry", ex);
-    }
-  }
-
-  private TransferResponse readTransferResponse(String resultBody) {
-    try {
-      return objectMapper.readValue(resultBody, TransferResponse.class);
-    } catch (JsonProcessingException ex) {
-      throw new IllegalStateException("Corrupted idempotency entry", ex);
     }
   }
 

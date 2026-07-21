@@ -19,7 +19,7 @@ public class CacheConfig implements CachingConfigurer {
 
   private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
 
-  @Value("${spring.cache.redis.time-to-live:24h}")
+  @Value("${spring.cache.redis.time-to-live}")
   private String cacheTimeToLive;
 
   @PostConstruct

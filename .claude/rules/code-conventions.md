@@ -106,7 +106,7 @@ The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-
 
 ## Project documentation
 
-- `README.md`, `CLAUDE.md`, and `AGENTS.md` must always be kept up to date.
+- `README.md` and `CLAUDE.md` must always be kept up to date.
 - Whenever a change affects architecture, conventions, hardware wiring, dependencies,
   or any information already documented in these files, update them in the same
   change set.

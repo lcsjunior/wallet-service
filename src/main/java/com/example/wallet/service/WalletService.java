@@ -40,7 +40,7 @@ public class WalletService {
   @Transactional(readOnly = true)
   public BalanceResponse getCurrentBalance(UUID walletId) {
     var wallet = findByIdOrThrow(walletId);
-    return BalanceResponse.of(wallet.getId(), wallet.getBalance());
+    return walletMapper.toBalanceResponse(wallet);
   }
 
   @Transactional(readOnly = true)
