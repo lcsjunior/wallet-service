@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./mvnw test
 
 # Run a single test class
-./mvnw test -Dtest=WalletApplicationIntegrationTest
+./mvnw test -Dtest=WalletControllerIntegrationTest
 
 # Build and run with Docker
 docker compose up --build

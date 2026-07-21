@@ -8,7 +8,7 @@
 - Entity ↔ DTO mapping with MapStruct
 - DTOs MUST only be transformed to/from entities (or other DTOs) via a MapStruct mapper — never manually field-by-field in a controller, service, or elsewhere
 - Object construction via factory methods or builders (no direct `new`)
-- Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl` (e.g., `WalletRepository` → `WalletRepositoryImpl`)
+- Every repository must be a Spring Data interface extending `JpaRepository`; do not write concrete implementation classes — Spring Data provides the implementation at runtime
 - All new code goes under `src/main/java/com/example/wallet/` following the same layering
 
 ```
@@ -30,8 +30,12 @@ src/main/java/com/example/wallet/
 - Every controller must have an integration test (`@WebMvcTest` or `@SpringBootTest`)
 - Integration tests MUST NOT use mocks (e.g., `@MockitoBean`) — they must exercise the full stack, not stub out collaborators like `TransactionService`
 - Integration test classes MUST be suffixed `IntegrationTest` (e.g., `WalletControllerIntegrationTest`); unit test classes MUST be suffixed `Test` (e.g., `WalletServiceTest`)
-- Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, true)`) — no extra or missing fields allowed
+- Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, STRICT)`, with `JsonCompareMode.STRICT`) — no extra or missing fields allowed
 - Expected/mock JSON payloads used in integration tests MUST be created in dedicated `.json` files under `src/test/resources/mock/json/`, never as inline Java string literals
+- Expected `.json` files MUST be fully hard-coded — one dedicated file per assertion, with every value (including UUIDs and `instance` paths) written out literally. Placeholder templating (`${...}`) and runtime string substitution are prohibited; to change an expectation you edit the `.json` file
+- Integration test seed data MUST live in one `.sql` file per test class under `src/test/resources/mock/sql/`, applied with a class-level `@Sql(scripts = "...", executionPhase = BEFORE_TEST_METHOD)`
+- Each seed script MUST start by clearing every table (`DELETE FROM wallet_transaction; DELETE FROM idempotency_entry; DELETE FROM wallet;`) and then `INSERT` the wallets that class needs. Resetting before each test method is what guarantees isolation and order-independence, so tests within a class may freely reuse the same wallet
+- Seeded IDs MUST be real UUIDs written literally in both the seed script and the expected `.json`, and MUST NOT repeat across seed files. `user_id` carries no meaning in seeds and is the same value everywhere
 - Unit tests (service layer) MUST use Mockito (`@Mock`/`@InjectMocks` or `Mockito.mock`) to isolate the unit under test from its collaborators (repositories, other services)
 - Unit tests MUST call `Mockito.verify(...)` whenever the test's purpose is to confirm a collaborator was (or was not) invoked with specific arguments — e.g., confirming a repository save happened exactly once, or that a second call with the same `correlationId` never reaches the persistence layer. Skip `verify()` only when the assertion is purely on the returned value/state and no interaction needs confirming.
 
