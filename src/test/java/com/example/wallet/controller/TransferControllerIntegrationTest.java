@@ -30,8 +30,8 @@ class TransferControllerIntegrationTest extends AppTests {
                 .content(loadJson("request/transfer/transfer-valid.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from.json");
-    expectBalance(TO_WALLET_ID, "response/transfer/balance-to.json");
+    expectBalance(FROM_WALLET_ID, "25.00");
+    expectBalance(TO_WALLET_ID, "75.00");
   }
 
   @Test
@@ -106,7 +106,7 @@ class TransferControllerIntegrationTest extends AppTests {
                 .content(loadJson("request/transfer/transfer-valid.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "response/transfer/balance-from.json");
-    expectBalance(TO_WALLET_ID, "response/transfer/balance-to.json");
+    expectBalance(FROM_WALLET_ID, "25.00");
+    expectBalance(TO_WALLET_ID, "75.00");
   }
 }

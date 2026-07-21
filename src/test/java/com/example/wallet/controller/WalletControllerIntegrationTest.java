@@ -32,23 +32,20 @@ class WalletControllerIntegrationTest extends AppTests {
                     .contentType(APPLICATION_JSON)
                     .content(loadJson("request/wallet/wallet-create.json")))
             .andExpect(status().isCreated())
-            .andExpect(content().json(loadJson("response/wallet/wallet-created.json"), LENIENT))
+            .andExpect(content().json(balanceJson("0.00"), LENIENT))
             .andReturn()
             .getResponse()
             .getContentAsString();
 
     String createdWalletId = JsonPath.parse(response).read("$.walletId");
-    expectBalance(createdWalletId, "response/wallet/balance-zero.json");
+    expectBalance(createdWalletId, "0.00");
   }
 
   @Test
   @DisplayName("Deve rejeitar criação de carteira quando o userId não é informado")
   void shouldRejectMissingUserId() throws Exception {
     mockMvc
-        .perform(
-            post("/v1/wallets")
-                .contentType(APPLICATION_JSON)
-                .content(loadJson("request/wallet/wallet-missing-userid.json")))
+        .perform(post("/v1/wallets").contentType(APPLICATION_JSON).content(emptyJson()))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/wallet/error-missing-userid.json"), STRICT));
   }
@@ -56,7 +53,7 @@ class WalletControllerIntegrationTest extends AppTests {
   @Test
   @DisplayName("Deve retornar o saldo atual quando a carteira existe")
   void shouldReturnCurrentBalance() throws Exception {
-    expectBalance(WALLET_ID, "response/wallet/balance-zero.json");
+    expectBalance(WALLET_ID, "0.00");
   }
 
   @Test

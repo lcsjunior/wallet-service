@@ -1,6 +1,5 @@
 package com.example.wallet;
 
-import static com.example.wallet.utils.JsonUtils.loadJson;
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -17,10 +16,22 @@ public abstract class AppTests {
 
   @Autowired protected MockMvc mockMvc;
 
-  protected void expectBalance(String walletId, String expectedJson) throws Exception {
+  protected String emptyJson() {
+    return "{}";
+  }
+
+  protected String amountJson(String amount) {
+    return "{\"amount\":\"" + amount + "\"}";
+  }
+
+  protected String balanceJson(String balance) {
+    return "{\"balance\":\"" + balance + "\"}";
+  }
+
+  protected void expectBalance(String walletId, String balance) throws Exception {
     mockMvc
         .perform(get("/v1/wallets/" + walletId + "/balance"))
         .andExpect(status().isOk())
-        .andExpect(content().json(loadJson(expectedJson), STRICT));
+        .andExpect(content().json(balanceJson(balance), STRICT));
   }
 }
