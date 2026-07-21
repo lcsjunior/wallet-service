@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Business violation",
+  "status": 400,
+  "detail": "Cannot transfer to the same wallet",
+  "instance": "/v1/transfers"
+}

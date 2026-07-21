@@ -2,83 +2,95 @@
 
 ## Architecture
 
-- Layered MVC: controller → service → repository
-- Every controller must be mapped under a `/v1/...` prefix (e.g., `/v1/wallets`)
-- Immutable DTOs via Java `record`
-- Entity ↔ DTO mapping with MapStruct
-- Object construction via factory methods or builders (no direct `new`)
-- Every repository must be an interface; concrete repository implementation classes must be suffixed `Impl` (e.g., `WalletRepository` → `WalletRepositoryImpl`)
-- All new code goes under `src/main/java/com/example/wallet_service/` following the same layering
+- Layered MVC: controller → service → repository, all under `com.example.wallet`
+- Controllers mapped under `/v1/...`
+- DTOs are immutable `record`s; entity ↔ DTO conversion only through a MapStruct mapper, never field-by-field
+- Objects are built by factory methods or builders — no direct `new`
+- Repositories are Spring Data interfaces extending `JpaRepository`; never write an implementation class
 
 ```
-src/main/java/com/example/wallet_service/
+src/main/java/com/example/wallet/
+├── config/         # Spring configuration (e.g., @EnableCaching)
 ├── controller/     # REST controllers
 ├── dto/            # Immutable request/response records
 ├── entity/         # JPA entities
+├── exception/      # ServiceException, ErrorCode, global handler
 ├── mapper/         # MapStruct mappers (Entity ↔ DTO)
 ├── repository/     # Spring Data JPA repositories
 ├── service/        # Business logic
-└── WalletServiceApplication.java
+│   └── resolver/   # Cross-cutting service helpers
+└── WalletApplication.java
 ```
 
 ## Testing
 
-- Every controller must have an integration test (`@WebMvcTest` or `@SpringBootTest`)
-- Integration tests MUST NOT use mocks (e.g., `@MockitoBean`) — they must exercise the full stack, not stub out collaborators like `TransactionService`
-- Integration test classes MUST be suffixed `IntegrationTest` (e.g., `WalletControllerIntegrationTest`); unit test classes MUST be suffixed `Test` (e.g., `WalletServiceTest`)
-- Tests assert the full JSON response using **strict** mock JSON (`.content().json(expectedJson, true)`) — no extra or missing fields allowed
-- Expected/mock JSON payloads used in integration tests MUST be created in dedicated `.json` files under `src/test/resources/mock/json/`, never as inline Java string literals
-- Unit tests (service layer) MUST use Mockito (`@Mock`/`@InjectMocks` or `Mockito.mock`) to isolate the unit under test from its collaborators (repositories, other services)
-- Unit tests MUST call `Mockito.verify(...)` whenever the test's purpose is to confirm a collaborator was (or was not) invoked with specific arguments — e.g., confirming a repository save happened exactly once, or that a second call with the same `correlationId` never reaches the persistence layer. Skip `verify()` only when the assertion is purely on the returned value/state and no interaction needs confirming.
+Integration test classes are suffixed `IntegrationTest`, unit test classes `Test`.
 
-## Package Naming
+**Integration** — every controller has one, exercising the full stack with no mocks:
 
-Packaged as `com.example.wallet_service` (note underscore — the artifact name `wallet-service` is invalid as a Java package name).
+- Extend `AppTests`, which holds the shared `MockMvc` and `expectBalance`; wallet UUIDs and other scenario data stay in the concrete class
+- Assert the whole body with `.content().json(expected, STRICT)` — no extra or missing fields
+- Tests of a mutation endpoint end with `expectBalance(...)`, failure cases included: it proves a rejected request had no side effect (a transfer to a missing wallet must not debit the source)
+- Payloads with one field or none come from `JsonUtils.fieldJson(field, value)` / `emptyJson()`, keeping the value at the call site
+- Larger payloads live in `src/test/resources/mock/json/{request,response}/<controller>/`, named `<payload-type>-<scenario>.json` — payload type is `amount`/`transfer`/`wallet` for requests, `error`/`balance`/`wallet` for responses
+- Those files are hard-coded: every UUID and `instance` path written out literally. No `${...}` templating, no runtime substitution — to change an expectation, edit the file
+- Seed data is one `.sql` per test class in `mock/sql/`, applied with `@Sql(scripts = "...", executionPhase = BEFORE_TEST_METHOD)`. Each script clears every table, then inserts what the class needs; that reset per method is what buys isolation and order-independence
+- Seeded UUIDs are real, written literally, and never repeat across seed files; `user_id` is the same value everywhere
+
+**Unit** — Mockito (`@Mock`/`@InjectMocks`) to isolate the unit from repositories and other services. Call `verify(...)` whenever the point is that a collaborator was (or was not) invoked with given arguments; skip it when asserting only the returned value.
+
+## Naming
+
+- Method names are objective, short, free of abbreviations, and never exceed 38 characters
+- Factory methods are named `of` (`Wallet.of(userId)`) — never `create` or similar
+- `validate*` must contain a conditional that rejects the input; a method that unconditionally builds or throws is named after what it does (`walletNotFoundException`)
+- A method whose return value no caller reads is declared `void`
+- Test methods are `should<Outcome>When<Condition>`, annotated with `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
+
+## Exceptions
+
+- Business errors throw `ServiceException` — never a subclass per case. It carries `message` and `httpStatus`, with exactly two constructors: `(String, HttpStatus)` and `(ErrorCode)`, the latter delegating to the former
+- The `ProblemDetail` body exposes only `title`, `detail`, `status`, `instance`, plus `errors` for validation failures — never a machine-readable `code`
+
+## Message Keys
+
+- No hyphens; compound words are concatenated (`wallet.notfound`, `correlationid.conflict`)
+- Sorted alphabetically, values without trailing punctuation (`Wallet not found`)
+- A key is deleted in the same change set that removes its last reference
 
 ## Monetary Values
 
-- Every monetary value MUST be represented as `BigDecimal`, scale exactly 2 (e.g., `0.01`) — never `double`/`float`.
-- Values with more than 2 decimal places (e.g., `0.015`) MUST be rejected as a validation error at the system boundary (DTO validation) — never silently rounded or truncated to 2 places.
-- Amount fields on request DTOs (deposit/withdrawal/transfer) MUST be strictly positive (e.g., Bean Validation `@Positive`); zero and negative values MUST be rejected as a validation error at the DTO boundary, never reaching the service layer. Sign of the effect on balance comes from the operation type, not from the stored value.
+- Always `BigDecimal` with scale exactly 2 — never `double`/`float`
+- More than 2 decimal places is a validation error at the DTO boundary, never silently rounded
+- Request amounts are strictly positive (`@Positive`); the sign of the effect comes from the operation type, not the value
 
-## Method Naming
+## Caching
 
-- Method names MUST be objective, short, and free of abbreviations — this applies to production code and test code alike
-- No method name may exceed 38 characters
-- Factory methods MUST be named `of` (e.g., `Wallet.of(userId)`) — never `create`, `createNew`, or similar
-- Every test method name must start with `should` (e.g., `shouldReturnBalanceWhenWalletExists`)
-- Every test method must be annotated with `@DisplayName` describing the scenario
+- Only `@Cacheable`, declared on the repository — `@CachePut`, `@CacheEvict` and the `CacheManager` API are prohibited, and services hold no cache-aware code
+- Never cache an absent result: `unless = "#result == null"` (Spring unwraps `Optional` before evaluating it)
+- All cache settings live in `application.properties`, never hard-coded in Java
 
-## Local Variables
+## Style
 
-- Prefer `var` over explicit types for local variable declarations when the type is clear from the right-hand side.
-
-## Control Flow
-
-- Prefer early returns (guard clauses) over nested conditionals — return/throw as soon as a precondition fails instead of wrapping the remaining logic in an `else` block.
-- Prefer method references over lambdas whenever possible (e.g., `list.forEach(this::process)` over `list.forEach(item -> process(item))`).
+- Prefer `var` when the type is clear from the right-hand side
+- Static-import constants and enum values (`WALLET_NOT_FOUND`, `CREATED`, `STRING`) and reference them unqualified; keep them qualified only when two enums would collide in the same file. Ordinary static calls (`Optional.of`, `UUID.randomUUID`, `Wallet.of`) stay qualified
+- Guard clauses over nested conditionals; method references over lambdas
+- No comments or Javadoc anywhere — naming and structure carry the meaning
 
 ## Logging
 
-- Every class that logs MUST declare a `LOG_PREFIX` constant and prepend it to every log message, e.g.:
+Every logging class declares `LOG_PREFIX` with its own name in `UPPER_SNAKE_CASE`, prepended to every message:
 
 ```java
-private static final String LOG_PREFIX = "[WALLET_SERVICE] ";
+private static final String LOG_PREFIX = "[TRANSACTION_SERVICE] ";
 
-log.info(LOG_PREFIX + "Wallet created | userId={}, walletId={}", newWallet.getUserId(), newWallet.getId());
+log.info(LOG_PREFIX + "Wallet created | userId={}, walletId={}", wallet.getUserId(), wallet.getId());
 ```
-
-## Comments
-
-- Code comments and Javadoc are forbidden anywhere in this codebase — no `//`, `/* */`, or `/** */` blocks. Code must be self-explanatory through naming and structure.
 
 ## Docker
 
-The Docker image is built from a pre-compiled JAR (`target/wallet-service-0.0.1-SNAPSHOT.jar`) using `eclipse-temurin:21-jre-alpine`. Run `./mvnw clean package` before `docker compose up`.
+The image is built from the pre-compiled JAR (`target/wallet-service-0.0.1-SNAPSHOT.jar`) on `eclipse-temurin:21-jre-alpine`. Run `./mvnw clean package` before `docker compose up`.
 
-## Project documentation
+## Documentation
 
-- `README.md`, `CLAUDE.md`, and `AGENTS.md` must always be kept up to date.
-- Whenever a change affects architecture, conventions, hardware wiring, dependencies,
-  or any information already documented in these files, update them in the same
-  change set.
+`README.md` (English only) and `CLAUDE.md` are updated in the same change set as any change to architecture, conventions or dependencies.
