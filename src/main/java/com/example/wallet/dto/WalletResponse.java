@@ -8,7 +8,4 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record WalletResponse(
-    UUID walletId,
-    UUID userId,
-    @JsonFormat(shape = STRING) BigDecimal balance,
-    Instant createdAt) {}
+    UUID walletId, @JsonFormat(shape = STRING) BigDecimal balance, Instant createdAt) {}
