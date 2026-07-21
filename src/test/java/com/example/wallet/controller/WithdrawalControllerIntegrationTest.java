@@ -63,7 +63,7 @@ class WithdrawalControllerIntegrationTest {
                 "status",
                 "422",
                 "detail",
-                "Wallet has insufficient balance for this operation",
+                "Insufficient balance",
                 "instance",
                 "/v1/wallets/" + walletId + "/withdrawals"));
 

@@ -6,7 +6,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.time.Instant;
@@ -28,10 +27,6 @@ public class IdempotencyEntry implements Serializable {
   @Column(name = "request_fingerprint", nullable = false, updatable = false)
   private String requestFingerprint;
 
-  @Lob
-  @Column(name = "result_body", nullable = false, updatable = false)
-  private String resultBody;
-
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -41,22 +36,16 @@ public class IdempotencyEntry implements Serializable {
       String correlationId,
       OperationType operationType,
       String requestFingerprint,
-      String resultBody,
       Instant createdAt) {
     this.correlationId = correlationId;
     this.operationType = operationType;
     this.requestFingerprint = requestFingerprint;
-    this.resultBody = resultBody;
     this.createdAt = createdAt;
   }
 
   public static IdempotencyEntry of(
-      String correlationId,
-      OperationType operationType,
-      String requestFingerprint,
-      String resultBody) {
-    return new IdempotencyEntry(
-        correlationId, operationType, requestFingerprint, resultBody, Instant.now());
+      String correlationId, OperationType operationType, String requestFingerprint) {
+    return new IdempotencyEntry(correlationId, operationType, requestFingerprint, Instant.now());
   }
 
   public String getCorrelationId() {
@@ -69,10 +58,6 @@ public class IdempotencyEntry implements Serializable {
 
   public String getRequestFingerprint() {
     return requestFingerprint;
-  }
-
-  public String getResultBody() {
-    return resultBody;
   }
 
   public Instant getCreatedAt() {

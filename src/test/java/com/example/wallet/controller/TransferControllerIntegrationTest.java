@@ -73,7 +73,7 @@ class TransferControllerIntegrationTest {
             "common/error.json",
             Map.of(
                 "status", "422",
-                "detail", "Wallet has insufficient balance for this operation",
+                "detail", "Insufficient balance",
                 "instance", "/v1/transfers"));
 
     mockMvc
@@ -126,7 +126,7 @@ class TransferControllerIntegrationTest {
             "common/error.json",
             Map.of(
                 "status", "400",
-                "detail", "Cannot transfer from a wallet to itself",
+                "detail", "Cannot transfer to the same wallet",
                 "instance", "/v1/transfers"));
 
     mockMvc

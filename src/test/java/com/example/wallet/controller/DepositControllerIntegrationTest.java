@@ -159,7 +159,7 @@ class DepositControllerIntegrationTest {
             "common/error.json",
             Map.of(
                 "status", "409",
-                "detail", "Correlation-Id was already used with different request parameters",
+                "detail", "Correlation-Id already used with different parameters",
                 "instance", "/v1/wallets/" + walletId + "/deposits"));
 
     mockMvc
