@@ -4,29 +4,14 @@ on:
   pull_request:
     branches: [main]
 
-jobs:
-  test:
-    name: Test (JaCoCo)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-      - name: Check Docker is available for Testcontainers
-        run: docker info > /dev/null
-      - name: Run tests with coverage
-        run: ./mvnw clean test
-      - uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-report
-          path: target/site/jacoco
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
-  sonar:
-    name: Static Analysis (SonarQube)
-    runs-on: ubuntu-latest
+jobs:
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,10 +21,24 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Check Docker is available for Testcontainers
-        run: docker info > /dev/null
-      - name: Run SonarQube analysis
+      - name: Cache SonarQube analysis data
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Run tests and Sonar analysis
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: ./mvnw clean verify sonar:sonar -Dsonar.host.url="$SONAR_HOST_URL" -Dsonar.token="$SONAR_TOKEN"
+        run: >
+          ./mvnw --batch-mode clean verify sonar:sonar
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+          -Dsonar.token="$SONAR_TOKEN"
+          -Dsonar.qualitygate.wait=true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: target/site/jacoco

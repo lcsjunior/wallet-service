@@ -136,6 +136,6 @@ so **Docker must be running**.
 ## CI/CD
 
 - **Automatic formatting**: a versioned pre-commit hook formats the code before every commit. Enable it once per clone with `git config core.hooksPath .githooks`.
-- **Pull requests to `main`**: `.github/workflows/ci.yml` runs `test` (JaCoCo report) and `sonar` (needs the `SONAR_TOKEN`/`SONAR_HOST_URL` secrets). Both run the suite, so both need a Docker daemon — `ubuntu-latest` has one, a self-hosted runner may not.
-- **Required checks**: make `Test (JaCoCo)` and `Static Analysis (SonarQube)` required under **Settings → Branches** for `main`. It is a GitHub setting, not a file in the repo.
+- **Pull requests to `main`**: `.github/workflows/ci.yml` runs one job, `code-quality`: `clean verify sonar:sonar` on `ubuntu-24.04`. A red SonarCloud quality gate fails it and blocks the merge.
+- **Settings on GitHub, not in the repo**: the `SONAR_TOKEN` secret, the `SONAR_ORGANIZATION` and `SONAR_PROJECT_KEY` variables, and `Code Quality` as a required check under **Settings → Branches**.
 
