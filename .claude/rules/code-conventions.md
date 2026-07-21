@@ -68,6 +68,7 @@ Packaged as `com.example.wallet`.
 - A method named `validate*` MUST contain a conditional that decides whether to reject the input (e.g., `if (...) throw ...`) — a method that unconditionally builds/logs/throws has nothing to validate and MUST be named after what it does instead (e.g., a method that always logs and returns a `ServiceException` for a missing wallet is `walletNotFoundException`, not `validateWalletExists`)
 - Every test method name must start with `should` (e.g., `shouldReturnBalanceWhenWalletExists`)
 - Every test method must be annotated with `@DisplayName` describing the scenario
+- A method whose returned object is never consumed by any caller MUST be declared `void` — do not return a value nobody reads
 
 ## Local Variables
 
