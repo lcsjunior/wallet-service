@@ -5,7 +5,7 @@ Everything outside **Preferences** is binding.
 ## Architecture
 
 - Layered MVC under `com.example.wallet`: controller → service → repository
-- Packages: `config`, `controller`, `dto`, `entity`, `exception`, `mapper`, `repository`, `service`
+- Packages: `config`, `constants`, `controller`, `dto`, `entity`, `exception`, `mapper`, `repository`, `service`
 - Controllers mapped under `/v1/...`
 - DTOs are immutable `record`s
 - Entity ↔ DTO conversion only through MapStruct

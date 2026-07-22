@@ -9,58 +9,50 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.time.Instant;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Immutable;
 
 @Entity
+@Immutable
 @Table(name = "idempotency_entry")
 public class IdempotencyEntry implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
   @Id
-  @Column(name = "correlation_id", nullable = false, updatable = false)
+  @Column(name = "correlation_id", nullable = false)
   private String correlationId;
 
   @Enumerated(STRING)
-  @Column(name = "operation_type", nullable = false, updatable = false, length = 20)
+  @Column(name = "operation_type", nullable = false, length = 20)
   private OperationType operationType;
 
-  @Column(name = "request_fingerprint", nullable = false, updatable = false)
+  @Column(name = "request_fingerprint", nullable = false)
   private String requestFingerprint;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
+  @CreationTimestamp
+  @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
   protected IdempotencyEntry() {}
 
   private IdempotencyEntry(
-      String correlationId,
-      OperationType operationType,
-      String requestFingerprint,
-      Instant createdAt) {
+      String correlationId, OperationType operationType, String requestFingerprint) {
     this.correlationId = correlationId;
     this.operationType = operationType;
     this.requestFingerprint = requestFingerprint;
-    this.createdAt = createdAt;
   }
 
   public static IdempotencyEntry of(
       String correlationId, OperationType operationType, String requestFingerprint) {
-    return new IdempotencyEntry(correlationId, operationType, requestFingerprint, Instant.now());
+    return new IdempotencyEntry(correlationId, operationType, requestFingerprint);
   }
 
   public String getCorrelationId() {
     return correlationId;
   }
 
-  public OperationType getOperationType() {
-    return operationType;
-  }
-
   public String getRequestFingerprint() {
     return requestFingerprint;
-  }
-
-  public Instant getCreatedAt() {
-    return createdAt;
   }
 }
