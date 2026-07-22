@@ -1,5 +1,8 @@
 # Wallet Service
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
+
 RESTful microservice for wallet management — supports deposits, withdrawals, and transfers between users.
 
 > Programming challenge. Java 21 + Spring Boot 3.5.
