@@ -53,13 +53,13 @@ public class TransactionService {
     walletRepository.save(wallet);
 
     var transaction =
-        WalletTransaction.of(
-            wallet.getId(),
-            TransactionType.DEPOSIT,
-            amount,
-            wallet.getBalance(),
-            correlationId,
-            null);
+        WalletTransaction.builder()
+            .walletId(wallet.getId())
+            .type(TransactionType.DEPOSIT)
+            .amount(amount)
+            .balanceAfter(wallet.getBalance())
+            .correlationId(correlationId)
+            .build();
     walletTransactionRepository.save(transaction);
 
     persistIdempotency(correlationId, OperationType.DEPOSIT, fingerprint);
@@ -83,13 +83,13 @@ public class TransactionService {
     walletRepository.save(wallet);
 
     var transaction =
-        WalletTransaction.of(
-            wallet.getId(),
-            TransactionType.WITHDRAWAL,
-            amount,
-            wallet.getBalance(),
-            correlationId,
-            null);
+        WalletTransaction.builder()
+            .walletId(wallet.getId())
+            .type(TransactionType.WITHDRAWAL)
+            .amount(amount)
+            .balanceAfter(wallet.getBalance())
+            .correlationId(correlationId)
+            .build();
     walletTransactionRepository.save(transaction);
 
     persistIdempotency(correlationId, OperationType.WITHDRAWAL, fingerprint);
@@ -119,21 +119,23 @@ public class TransactionService {
     walletRepository.save(toWallet);
 
     walletTransactionRepository.save(
-        WalletTransaction.of(
-            fromWallet.getId(),
-            TransactionType.TRANSFER_DEBIT,
-            amount,
-            fromWallet.getBalance(),
-            correlationId,
-            toWallet.getId()));
+        WalletTransaction.builder()
+            .walletId(fromWallet.getId())
+            .type(TransactionType.TRANSFER_DEBIT)
+            .amount(amount)
+            .balanceAfter(fromWallet.getBalance())
+            .correlationId(correlationId)
+            .peerWalletId(toWallet.getId())
+            .build());
     walletTransactionRepository.save(
-        WalletTransaction.of(
-            toWallet.getId(),
-            TransactionType.TRANSFER_CREDIT,
-            amount,
-            toWallet.getBalance(),
-            correlationId,
-            fromWallet.getId()));
+        WalletTransaction.builder()
+            .walletId(toWallet.getId())
+            .type(TransactionType.TRANSFER_CREDIT)
+            .amount(amount)
+            .balanceAfter(toWallet.getBalance())
+            .correlationId(correlationId)
+            .peerWalletId(fromWallet.getId())
+            .build());
 
     persistIdempotency(correlationId, OperationType.TRANSFER, fingerprint);
     log.info(
