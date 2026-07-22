@@ -25,7 +25,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 |-----------|-----------|
 | Language | Java 21 |
 | Framework | Spring Boot 3.5.16 (Web, Data JPA, Actuator) |
-| Database | H2 (relational, embedded, file-based at `./data/`) — source of truth |
+| Database | H2 in-memory, in PostgreSQL compatibility mode — source of truth |
 | Cache | Redis — accelerates idempotency retries only, non-authoritative, optional (`CACHE_TYPE=none`) |
 | Mapping | MapStruct |
 | API Docs | SpringDoc OpenAPI (`/swagger-ui.html`) |
@@ -48,8 +48,7 @@ build step is required:
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | Health | `http://localhost:8080/actuator/health` |
 
-H2 is file-based under `./data/`, so balances survive a restart. Delete that folder to
-start from a clean database.
+H2 is in-memory, so every restart starts from an empty database.
 
 Redis is optional — `CACHE_TYPE=none` runs the app entirely off the database. It is also
 optional at runtime: a Redis that dies is logged at `WARN` and the request falls through
@@ -135,8 +134,7 @@ so **Docker must be running**.
 
 ## CI/CD
 
-- **Automatic formatting**: a versioned pre-commit hook formats the code before every commit. Enable it once per clone with `git config core.hooksPath .githooks`.
-- **Pull requests to `main`, and pushes to it**: `.github/workflows/ci.yml` runs one job, `code-quality`: `clean verify sonar:sonar` on `ubuntu-24.04`. A red SonarCloud quality gate fails it and blocks the merge. The run on `main` keeps the branch analysis and the new code baseline current.
-- **Settings on GitHub, not in the repo**: the `SONAR_TOKEN` secret, and `Code Quality` as a required check under **Settings → Branches**. The SonarCloud organization and project key are derived from the repository slug, so the workflow is portable as is.
-- **On SonarCloud**: the project must exist and *Automatic Analysis* must be off, otherwise the CI-based analysis is rejected.
+- **Formatting**: a pre-commit hook formats the code. Enable it once per clone with `git config core.hooksPath .githooks`.
+- **Pipeline**: on pull requests to `main` and pushes to it, `.github/workflows/ci.yml` runs `clean verify sonar:sonar`. A red SonarCloud quality gate blocks the merge.
+- **Setup**: on GitHub, the `SONAR_TOKEN` secret and `Code Quality` as a required check; on SonarCloud, the project must exist with *Automatic Analysis* off.
 

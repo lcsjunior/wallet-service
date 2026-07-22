@@ -22,7 +22,7 @@ Running without Docker needs a Redis on `localhost:6379` (`REDIS_HOST`/`REDIS_PO
 point elsewhere), or `CACHE_TYPE=none` to skip it.
 
 Profiles: none is production; `test` is applied by the suite; `dev` adds plain-text logs
-and the H2 console at `/h2-console` (`jdbc:h2:file:./data/wallet-service`, user `sa`, no
+and the H2 console at `/h2-console` (`jdbc:h2:mem:test`, user `sa`, no
 password).
 
 ```bash
