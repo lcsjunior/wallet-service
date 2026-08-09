@@ -7,7 +7,7 @@ import java.nio.file.Path;
 
 public final class JsonUtils {
 
-  private static final String BASE_PATH = "src/test/resources/mock/json/";
+  private static final String BASE_PATH = "src/test/resources/mock/";
 
   private JsonUtils() {}
 

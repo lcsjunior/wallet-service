@@ -1,7 +1,9 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.utils.JsonUtils.fieldJson;
 import static com.example.wallet.utils.JsonUtils.loadJson;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static org.springframework.test.json.JsonCompareMode.STRICT;
@@ -14,7 +16,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.jdbc.Sql;
 
-@Sql(scripts = "/mock/sql/withdrawal-seed.sql", executionPhase = BEFORE_TEST_METHOD)
+@Sql(
+    scripts = {"/mock/sql/clear-tables.sql", "/mock/sql/withdrawal-seed.sql"},
+    executionPhase = BEFORE_TEST_METHOD)
 class WithdrawalControllerIntegrationTest extends AppTests {
 
   private static final String WALLET_ID = "35a907a7-9217-4e12-b1f2-5d80f579f9b0";
@@ -26,12 +30,12 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-1")
+                .header(CORRELATION_ID_HEADER, "id-1")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
 
-    expectBalance(WALLET_ID, "70.00");
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
 
   @Test
@@ -40,13 +44,13 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-2")
+                .header(CORRELATION_ID_HEADER, "id-2")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "1000.00")))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().json(loadJson("response/withdrawal/error-insufficient.json"), STRICT));
 
-    expectBalance(WALLET_ID, "100.00");
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
 
   @Test
@@ -55,13 +59,13 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-3")
+                .header(CORRELATION_ID_HEADER, "id-3")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "0")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/withdrawal/error-non-positive.json"), STRICT));
 
-    expectBalance(WALLET_ID, "100.00");
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
 
   @Test
@@ -70,23 +74,23 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-4")
+                .header(CORRELATION_ID_HEADER, "id-4")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/withdrawal/error-wallet-not-found.json"), STRICT));
 
-    expectBalance(WALLET_ID, "100.00");
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
 
   @Test
   @DisplayName("Deve retornar 204 sem debitar de novo quando o Correlation-Id se repete")
-  void shouldIgnoreRepeatedCorrelationId() throws Exception {
+  void shouldSkipWhenCorrelationIdRepeats() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-5")
+                .header(CORRELATION_ID_HEADER, "id-5")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
@@ -94,11 +98,11 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header("Correlation-Id", "wd-5")
+                .header(CORRELATION_ID_HEADER, "id-5")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
         .andExpect(status().isNoContent());
 
-    expectBalance(WALLET_ID, "70.00");
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
 }

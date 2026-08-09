@@ -1,11 +1,8 @@
 package com.example.wallet;
 
-import static com.example.wallet.utils.JsonUtils.fieldJson;
-import static org.springframework.test.json.JsonCompareMode.STRICT;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
+import com.example.wallet.repository.WalletRepository;
+import java.math.BigDecimal;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -33,17 +30,18 @@ public abstract class AppTests {
 
   @Autowired protected MockMvc mockMvc;
 
+  @Autowired protected WalletRepository walletRepository;
+
   @Autowired private RedisConnectionFactory redisConnectionFactory;
 
   @BeforeEach
-  void flushCache() {
-    redisConnectionFactory.getConnection().serverCommands().flushAll();
+  void resetState() {
+    try (var connection = redisConnectionFactory.getConnection()) {
+      connection.serverCommands().flushAll();
+    }
   }
 
-  protected void expectBalance(String walletId, String balance) throws Exception {
-    mockMvc
-        .perform(get("/v1/wallets/" + walletId + "/balance"))
-        .andExpect(status().isOk())
-        .andExpect(content().json(fieldJson("balance", balance), STRICT));
+  protected BigDecimal balanceOf(String walletId) {
+    return walletRepository.findById(UUID.fromString(walletId)).orElseThrow().getBalance();
   }
 }

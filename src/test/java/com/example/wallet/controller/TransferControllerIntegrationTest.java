@@ -1,6 +1,8 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.utils.JsonUtils.loadJson;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
 import static org.springframework.test.json.JsonCompareMode.STRICT;
@@ -13,7 +15,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.jdbc.Sql;
 
-@Sql(scripts = "/mock/sql/transfer-seed.sql", executionPhase = BEFORE_TEST_METHOD)
+@Sql(
+    scripts = {"/mock/sql/clear-tables.sql", "/mock/sql/transfer-seed.sql"},
+    executionPhase = BEFORE_TEST_METHOD)
 class TransferControllerIntegrationTest extends AppTests {
 
   private static final String FROM_WALLET_ID = "7bbda0fe-87ca-42a5-81df-2679d05f4b14";
@@ -25,13 +29,13 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-1")
+                .header(CORRELATION_ID_HEADER, "id-1")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-valid.json")))
+                .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "25.00");
-    expectBalance(TO_WALLET_ID, "75.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
   }
 
   @Test
@@ -40,30 +44,46 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-2")
+                .header(CORRELATION_ID_HEADER, "id-2")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-insufficient.json")))
+                .content(loadJson("request/transfer/transfer-amount-1000.json")))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().json(loadJson("response/transfer/error-insufficient.json"), STRICT));
 
-    expectBalance(FROM_WALLET_ID, "100.00");
-    expectBalance(TO_WALLET_ID, "0.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
   }
 
   @Test
-  @DisplayName("Deve retornar 404 quando a carteira de destino não existe")
-  void shouldRejectWhenWalletDoesNotExist() throws Exception {
+  @DisplayName("Deve retornar 404 quando a carteira de origem não existe")
+  void shouldRejectWhenFromWalletDoesNotExist() throws Exception {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-3")
+                .header(CORRELATION_ID_HEADER, "id-3")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-missing-wallet.json")))
+                .content(loadJson("request/transfer/transfer-unknown-from-wallet.json")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
 
-    expectBalance(FROM_WALLET_ID, "100.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 404 quando a carteira de destino não existe")
+  void shouldRejectWhenToWalletDoesNotExist() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(CORRELATION_ID_HEADER, "id-4")
+                .contentType(APPLICATION_JSON)
+                .content(loadJson("request/transfer/transfer-unknown-to-wallet.json")))
+        .andExpect(status().isNotFound())
+        .andExpect(
+            content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
   }
 
   @Test
@@ -72,13 +92,13 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-4")
+                .header(CORRELATION_ID_HEADER, "id-5")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-same-wallet.json")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/transfer/error-same-wallet.json"), STRICT));
 
-    expectBalance(FROM_WALLET_ID, "100.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
   }
 
   @Test
@@ -87,36 +107,36 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-5")
+                .header(CORRELATION_ID_HEADER, "id-6")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-non-positive.json")))
+                .content(loadJson("request/transfer/transfer-amount-negative.json")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/transfer/error-non-positive.json"), STRICT));
 
-    expectBalance(FROM_WALLET_ID, "100.00");
-    expectBalance(TO_WALLET_ID, "0.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
   }
 
   @Test
   @DisplayName("Deve retornar 204 sem mover o saldo de novo quando o Correlation-Id se repete")
-  void shouldIgnoreRepeatedCorrelationId() throws Exception {
+  void shouldSkipWhenCorrelationIdRepeats() throws Exception {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-6")
+                .header(CORRELATION_ID_HEADER, "id-7")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-valid.json")))
+                .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header("Correlation-Id", "tx-6")
+                .header(CORRELATION_ID_HEADER, "id-7")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-valid.json")))
+                .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent());
 
-    expectBalance(FROM_WALLET_ID, "25.00");
-    expectBalance(TO_WALLET_ID, "75.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
   }
 }
