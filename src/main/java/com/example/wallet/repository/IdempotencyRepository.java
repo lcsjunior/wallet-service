@@ -2,6 +2,7 @@ package com.example.wallet.repository;
 
 import com.example.wallet.entity.IdempotencyEntry;
 import java.util.Optional;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -12,6 +13,6 @@ public interface IdempotencyRepository extends JpaRepository<IdempotencyEntry, S
   Optional<IdempotencyEntry> findById(String correlationId);
 
   @Override
-  @Cacheable(cacheNames = "idempotencyEntry", key = "#entity.correlationId")
+  @CachePut(cacheNames = "idempotencyEntry", key = "#entity.correlationId")
   <S extends IdempotencyEntry> S save(S entity);
 }
