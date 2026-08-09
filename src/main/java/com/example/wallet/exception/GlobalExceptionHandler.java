@@ -1,5 +1,6 @@
 package com.example.wallet.exception;
 
+import static com.example.wallet.constants.Messages.ENTITY_CONFLICT;
 import static com.example.wallet.constants.Messages.MISSING_REQUIRED_HEADER;
 import static com.example.wallet.constants.Messages.VALIDATION_ERROR;
 import static org.springframework.http.HttpStatus.CONFLICT;
@@ -23,7 +24,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   private static final String PROPERTY_ERRORS = "errors";
   private static final String BUSINESS_ERROR_TITLE = "Business violation";
   private static final String VALIDATION_ERROR_TITLE = "Validation error";
-  private static final String ENTITY_CONFLICT_DETAIL = "Conflict detected, please try again";
 
   private final FieldErrorMapper fieldErrorMapper;
 
@@ -43,7 +43,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ProblemDetail> handleOptimisticLock() {
     var problemDetail = ProblemDetail.forStatus(CONFLICT);
     problemDetail.setTitle(BUSINESS_ERROR_TITLE);
-    problemDetail.setDetail(ENTITY_CONFLICT_DETAIL);
+    problemDetail.setDetail(ENTITY_CONFLICT);
     return ResponseEntity.status(CONFLICT).body(problemDetail);
   }
 
