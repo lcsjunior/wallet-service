@@ -1,5 +1,7 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+
 import com.example.wallet.dto.TransferRequest;
 import com.example.wallet.service.TransactionService;
 import jakarta.validation.Valid;
@@ -22,7 +24,7 @@ public class TransferController {
 
   @PostMapping
   public ResponseEntity<Void> transfer(
-      @RequestHeader("Correlation-Id") String correlationId,
+      @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
       @Valid @RequestBody TransferRequest request) {
     transactionService.transfer(
         request.fromWalletId(), request.toWalletId(), request.amount(), correlationId);

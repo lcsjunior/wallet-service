@@ -1,9 +1,11 @@
 package com.example.wallet.service;
 
-import static com.example.wallet.exception.ErrorCode.CORRELATION_ID_CONFLICT;
-import static com.example.wallet.exception.ErrorCode.INSUFFICIENT_BALANCE;
-import static com.example.wallet.exception.ErrorCode.SAME_WALLET_TRANSFER;
-import static com.example.wallet.exception.ErrorCode.WALLET_NOT_FOUND;
+import static com.example.wallet.constants.Messages.CORRELATION_ID_CONFLICT;
+import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
+import static com.example.wallet.constants.Messages.SAME_WALLET_TRANSFER;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 import com.example.wallet.entity.IdempotencyEntry;
 import com.example.wallet.entity.OperationType;
@@ -43,12 +45,13 @@ public class TransactionService {
 
   @Transactional
   public void deposit(UUID walletId, BigDecimal amount, String correlationId) {
-    var fingerprint = buildFingerprint(OperationType.DEPOSIT, walletId.toString(), amount);
-    if (isDuplicateRequest(correlationId, fingerprint)) {
+    var idempotencyEntry =
+        IdempotencyEntry.of(correlationId, OperationType.DEPOSIT, walletId.toString(), amount);
+    if (isReplay(idempotencyEntry)) {
       return;
     }
 
-    var wallet = findWallet(walletId);
+    var wallet = walletRepository.findWallet(walletId);
     wallet.credit(amount);
     walletRepository.save(wallet);
 
@@ -62,22 +65,18 @@ public class TransactionService {
             .build();
     walletTransactionRepository.save(transaction);
 
-    persistIdempotency(correlationId, OperationType.DEPOSIT, fingerprint);
-    log.info(
-        LOG_PREFIX + "Deposit completed | walletId={}, amount={}, correlationId={}",
-        walletId,
-        amount,
-        correlationId);
+    idempotencyRepository.save(idempotencyEntry);
   }
 
   @Transactional
   public void withdraw(UUID walletId, BigDecimal amount, String correlationId) {
-    var fingerprint = buildFingerprint(OperationType.WITHDRAWAL, walletId.toString(), amount);
-    if (isDuplicateRequest(correlationId, fingerprint)) {
+    var idempotencyEntry =
+        IdempotencyEntry.of(correlationId, OperationType.WITHDRAWAL, walletId.toString(), amount);
+    if (isReplay(idempotencyEntry)) {
       return;
     }
 
-    var wallet = findWallet(walletId);
+    var wallet = walletRepository.findWallet(walletId);
     validateSufficientBalance(wallet, amount);
     wallet.debit(amount);
     walletRepository.save(wallet);
@@ -92,27 +91,23 @@ public class TransactionService {
             .build();
     walletTransactionRepository.save(transaction);
 
-    persistIdempotency(correlationId, OperationType.WITHDRAWAL, fingerprint);
-    log.info(
-        LOG_PREFIX + "Withdrawal completed | walletId={}, amount={}, correlationId={}",
-        walletId,
-        amount,
-        correlationId);
+    idempotencyRepository.save(idempotencyEntry);
   }
 
   @Transactional
   public void transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
-    validateDistinctWallets(fromWalletId, toWalletId);
-    var fingerprint =
-        buildFingerprint(OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
-    if (isDuplicateRequest(correlationId, fingerprint)) {
+    rejectSelfTransfer(fromWalletId, toWalletId);
+    var idempotencyEntry =
+        IdempotencyEntry.of(
+            correlationId, OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
+    if (isReplay(idempotencyEntry)) {
       return;
     }
 
-    var fromWallet = findWallet(fromWalletId);
-    var toWallet = findWallet(toWalletId);
+    var fromWallet = walletRepository.findWallet(fromWalletId);
     validateSufficientBalance(fromWallet, amount);
+    var toWallet = walletRepository.findWallet(toWalletId);
     fromWallet.debit(amount);
     toWallet.credit(amount);
     walletRepository.save(fromWallet);
@@ -137,63 +132,32 @@ public class TransactionService {
             .peerWalletId(fromWallet.getId())
             .build());
 
-    persistIdempotency(correlationId, OperationType.TRANSFER, fingerprint);
-    log.info(
-        LOG_PREFIX
-            + "Transfer completed | fromWalletId={}, toWalletId={}, amount={}, correlationId={}",
-        fromWalletId,
-        toWalletId,
-        amount,
-        correlationId);
+    idempotencyRepository.save(idempotencyEntry);
   }
 
-  private void validateDistinctWallets(UUID fromWalletId, UUID toWalletId) {
+  private void rejectSelfTransfer(UUID fromWalletId, UUID toWalletId) {
     if (fromWalletId.equals(toWalletId)) {
-      throw new ServiceException(SAME_WALLET_TRANSFER);
+      throw ServiceException.of(SAME_WALLET_TRANSFER, BAD_REQUEST);
     }
   }
 
-  private String buildFingerprint(OperationType operationType, String key, BigDecimal amount) {
-    return operationType + ":" + key + ":" + amount.toPlainString();
-  }
-
-  private boolean isDuplicateRequest(String correlationId, String fingerprint) {
-    var entryOpt = idempotencyRepository.findById(correlationId);
-    if (entryOpt.isEmpty()) {
+  private boolean isReplay(IdempotencyEntry idempotencyEntry) {
+    var correlationId = idempotencyEntry.getCorrelationId();
+    var storedEntry = idempotencyRepository.findById(correlationId);
+    if (storedEntry.isEmpty()) {
       return false;
     }
-    validateFingerprint(correlationId, fingerprint, entryOpt.get().getRequestFingerprint());
+    var storedFingerprint = storedEntry.get().getRequestFingerprint();
+    if (!storedFingerprint.equals(idempotencyEntry.getRequestFingerprint())) {
+      throw ServiceException.of(CORRELATION_ID_CONFLICT, CONFLICT);
+    }
     log.info(LOG_PREFIX + "Duplicate request ignored | correlationId={}", correlationId);
     return true;
   }
 
-  private void validateFingerprint(
-      String correlationId, String expectedFingerprint, String actualFingerprint) {
-    if (!actualFingerprint.equals(expectedFingerprint)) {
-      log.warn(LOG_PREFIX + "Correlation-Id conflict | correlationId={}", correlationId);
-      throw new ServiceException(CORRELATION_ID_CONFLICT);
-    }
-  }
-
-  private Wallet findWallet(UUID walletId) {
-    return walletRepository.findById(walletId).orElseThrow(() -> walletNotFoundException(walletId));
-  }
-
-  private ServiceException walletNotFoundException(UUID walletId) {
-    log.warn(LOG_PREFIX + "Wallet not found | walletId={}", walletId);
-    return new ServiceException(WALLET_NOT_FOUND);
-  }
-
   private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
     if (wallet.getBalance().compareTo(amount) < 0) {
-      log.warn(
-          LOG_PREFIX + "Insufficient balance | walletId={}, amount={}", wallet.getId(), amount);
-      throw new ServiceException(INSUFFICIENT_BALANCE);
+      throw ServiceException.of(INSUFFICIENT_BALANCE, UNPROCESSABLE_ENTITY);
     }
-  }
-
-  private void persistIdempotency(
-      String correlationId, OperationType operationType, String fingerprint) {
-    idempotencyRepository.save(IdempotencyEntry.of(correlationId, operationType, fingerprint));
   }
 }

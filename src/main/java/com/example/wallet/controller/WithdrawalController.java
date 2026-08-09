@@ -1,5 +1,7 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+
 import com.example.wallet.dto.WithdrawalRequest;
 import com.example.wallet.service.TransactionService;
 import jakarta.validation.Valid;
@@ -25,7 +27,7 @@ public class WithdrawalController {
   @PostMapping
   public ResponseEntity<Void> withdraw(
       @PathVariable UUID walletId,
-      @RequestHeader("Correlation-Id") String correlationId,
+      @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
       @Valid @RequestBody WithdrawalRequest request) {
     transactionService.withdraw(walletId, request.amount(), correlationId);
     return ResponseEntity.noContent().build();
