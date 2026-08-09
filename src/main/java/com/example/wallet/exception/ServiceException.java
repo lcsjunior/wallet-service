@@ -6,13 +6,13 @@ public class ServiceException extends RuntimeException {
 
   private final HttpStatus httpStatus;
 
-  public ServiceException(String message, HttpStatus httpStatus) {
+  private ServiceException(String message, HttpStatus httpStatus) {
     super(message);
     this.httpStatus = httpStatus;
   }
 
-  public ServiceException(ErrorCode errorCode) {
-    this(errorCode.getMessageKey(), errorCode.getHttpStatus());
+  public static ServiceException of(String message, HttpStatus httpStatus) {
+    return new ServiceException(message, httpStatus);
   }
 
   public HttpStatus getHttpStatus() {

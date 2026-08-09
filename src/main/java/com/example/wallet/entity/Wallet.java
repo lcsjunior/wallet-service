@@ -1,6 +1,6 @@
 package com.example.wallet.entity;
 
-import static com.example.wallet.constants.Constants.ZERO_AMOUNT;
+import static com.example.wallet.constants.Constants.ZERO_MONEY;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,7 +27,7 @@ public class Wallet {
   private UUID userId;
 
   @Column(name = "balance", nullable = false, precision = 19, scale = 2)
-  private BigDecimal balance = ZERO_AMOUNT;
+  private BigDecimal balance = ZERO_MONEY;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)

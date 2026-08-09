@@ -7,6 +7,6 @@ import java.math.BigDecimal;
 
 public record DepositRequest(
     @NotNull
-        @Positive(message = "{amount.positive}")
-        @Digits(integer = 17, fraction = 2, message = "{amount.scale}")
+        @Positive(message = "Amount must be positive")
+        @Digits(integer = 17, fraction = 2, message = "Amount must have at most 2 decimal places")
         BigDecimal amount) {}

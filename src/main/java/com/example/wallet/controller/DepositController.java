@@ -1,5 +1,7 @@
 package com.example.wallet.controller;
 
+import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+
 import com.example.wallet.dto.DepositRequest;
 import com.example.wallet.service.TransactionService;
 import jakarta.validation.Valid;
@@ -25,7 +27,7 @@ public class DepositController {
   @PostMapping
   public ResponseEntity<Void> deposit(
       @PathVariable UUID walletId,
-      @RequestHeader("Correlation-Id") String correlationId,
+      @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
       @Valid @RequestBody DepositRequest request) {
     transactionService.deposit(walletId, request.amount(), correlationId);
     return ResponseEntity.noContent().build();

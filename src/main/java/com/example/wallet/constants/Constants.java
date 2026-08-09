@@ -7,7 +7,9 @@ import java.math.BigDecimal;
 
 public final class Constants {
 
-  public static final BigDecimal ZERO_AMOUNT = ZERO.setScale(2, UNNECESSARY);
-
   private Constants() {}
+
+  public static final String CORRELATION_ID_HEADER = "Correlation-Id";
+
+  public static final BigDecimal ZERO_MONEY = ZERO.setScale(2, UNNECESSARY);
 }
