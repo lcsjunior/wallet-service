@@ -27,7 +27,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 | Component | Technology |
 |-----------|-----------|
 | Language | Java 21 |
-| Framework | Spring Boot 3.5.16 (Web, Data JPA, Actuator) |
+| Framework | Spring Boot 3.5.16 (Web, Data JPA, Validation, Actuator) |
 | Database | H2 in-memory, in PostgreSQL compatibility mode — source of truth |
 | Cache | Redis — accelerates idempotency retries only, non-authoritative, optional (`CACHE_TYPE=none`) |
 | Mapping | MapStruct |
@@ -38,8 +38,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 
 ## Quick Start
 
-Starts the service and its Redis together — the image packages the built JAR, so the
-build step is required:
+Starts the service and its Redis together:
 
 ```bash
 ./mvnw clean package && docker compose up --build
@@ -53,9 +52,8 @@ build step is required:
 
 H2 is in-memory, so every restart starts from an empty database.
 
-Redis is optional — `CACHE_TYPE=none` runs the app entirely off the database. It is also
-optional at runtime: a Redis that dies is logged at `WARN` and the request falls through
-to the database, so nothing breaks and idempotency still holds.
+Redis only accelerates idempotency retries — `CACHE_TYPE=none` runs the app entirely off
+the database.
 
 ## API Endpoints
 
@@ -80,13 +78,13 @@ curl -X POST http://localhost:8080/v1/wallets \
 # 2. Deposit — 204 No Content
 curl -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
   -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: dep-1' \
+  -H 'Correlation-Id: id-1' \
   -d '{"amount":"100.00"}'
 
 # 3. Transfer — 204 No Content
 curl -X POST http://localhost:8080/v1/transfers \
   -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: tf-1' \
+  -H 'Correlation-Id: id-2' \
   -d '{"fromWalletId":"'$FROM'","toWalletId":"'$TO'","amount":"25.00"}'
 
 # 4. Balance — 200 OK
@@ -94,15 +92,14 @@ curl http://localhost:8080/v1/wallets/$WALLET_ID/balance
 # {"balance":"75.00"}
 ```
 
-Amounts are JSON strings with at most 2 decimal places and must be strictly
-positive; the direction of the movement comes from the endpoint, never from the
-sign.
+Amounts travel as JSON strings, and the direction of the movement comes from the
+endpoint.
 
 ### Idempotency in practice
 
-Replaying step 2 with `Correlation-Id: dep-1` and the same body is a no-op — the
+Replaying step 2 with `Correlation-Id: id-1` and the same body is a no-op — the
 balance is credited once, no matter how many times the request arrives. Reusing
-`dep-1` with a *different* amount is rejected with `409 Conflict`, since the same
+`id-1` with a *different* amount is rejected with `409 Conflict`, since the same
 key would otherwise mean two different operations.
 
 ### Errors
@@ -119,9 +116,9 @@ Failures are returned as RFC 7807 `application/problem+json`:
 }
 ```
 
-The `title` names the kind of failure, not the specific error: `Business violation`
-for business failures, `Validation error` for invalid payloads and missing headers.
-Validation failures add an `errors` array of `{field, message}` entries.
+`title` is `Business violation` for business failures and `Validation error` for invalid
+payloads and missing headers. Validation failures add an `errors` array of
+`{field, message}` entries.
 
 | Status | When |
 |--------|------|
@@ -132,8 +129,7 @@ Validation failures add an `errors` array of `{field, message}` entries.
 
 ## Tests
 
-Integration tests run the full stack against an in-memory H2 and a Testcontainers Redis,
-so **Docker must be running**.
+**Docker must be running** — the integration suite starts a Redis container.
 
 ## CI/CD
 
