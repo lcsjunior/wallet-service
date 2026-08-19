@@ -1,4 +1,4 @@
-package com.example.wallet.utils;
+package com.example.wallet.testutils;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
