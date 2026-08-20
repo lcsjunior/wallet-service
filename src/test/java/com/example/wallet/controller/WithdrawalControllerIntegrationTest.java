@@ -1,6 +1,7 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 import static com.example.wallet.testutils.JsonUtils.fieldJson;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,6 +10,7 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.AppTests;
@@ -33,7 +35,8 @@ class WithdrawalControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-1")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
@@ -93,7 +96,8 @@ class WithdrawalControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-5")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
     mockMvc
         .perform(
@@ -101,7 +105,8 @@ class WithdrawalControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-5")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "30.00")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }

@@ -1,6 +1,7 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -8,6 +9,7 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.AppTests;
@@ -32,7 +34,8 @@ class TransferControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-1")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
@@ -126,7 +129,8 @@ class TransferControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-7")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
     mockMvc
         .perform(
@@ -134,7 +138,8 @@ class TransferControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "id-7")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
-        .andExpect(status().isNoContent());
+        .andExpect(status().isNoContent())
+        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");

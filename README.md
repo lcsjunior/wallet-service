@@ -17,7 +17,7 @@ RESTful microservice for wallet management — supports deposits, withdrawals, a
 
 ## Non-Functional Requirements
 
-- **Idempotency** — mutation operations (deposit, withdraw, transfer) are idempotent via a `Correlation-Id` header; retrying the same request produces the same result
+- **Idempotency** — mutation operations (deposit, withdraw, transfer) are idempotent via a `Correlation-Id` header; retrying the same request produces the same result, flagged by an `Idempotent-Replayed` response header
 - **Concurrency control** — wallet balance updates use optimistic locking (JPA `@Version`); concurrent updates to the same wallet return `409 Conflict`, and the client can safely retry with the same `Correlation-Id`
 - **Mission-critical reliability** — downtime directly impairs platform operations
 - **Full traceability** — all operations must be auditable for balance reconciliation
@@ -61,9 +61,9 @@ the database.
 |--------|------|---------|
 | `POST` | `/v1/wallets` | Create a wallet for a user, returns the generated `walletId` |
 | `GET` | `/v1/wallets/{walletId}/balance` | Current balance of the wallet |
-| `POST` | `/v1/wallets/{walletId}/deposits` | Deposit funds (requires `Correlation-Id` header); returns `204 No Content` |
-| `POST` | `/v1/wallets/{walletId}/withdrawals` | Withdraw funds (requires `Correlation-Id` header); returns `204 No Content` |
-| `POST` | `/v1/transfers` | Transfer funds between two wallets (requires `Correlation-Id` header); returns `204 No Content` |
+| `POST` | `/v1/wallets/{walletId}/deposits` | Deposit funds (requires `Correlation-Id` header); returns `204 No Content` plus `Idempotent-Replayed` |
+| `POST` | `/v1/wallets/{walletId}/withdrawals` | Withdraw funds (requires `Correlation-Id` header); returns `204 No Content` plus `Idempotent-Replayed` |
+| `POST` | `/v1/transfers` | Transfer funds between two wallets (requires `Correlation-Id` header); returns `204 No Content` plus `Idempotent-Replayed` |
 
 ## Usage
 
@@ -98,9 +98,24 @@ endpoint.
 ### Idempotency in practice
 
 Replaying step 2 with `Correlation-Id: id-1` and the same body is a no-op — the
-balance is credited once, no matter how many times the request arrives. Reusing
-`id-1` with a *different* amount is rejected with `409 Conflict`, since the same
-key would otherwise mean two different operations.
+balance is credited once, no matter how many times the request arrives. The retry
+still answers `204 No Content`, because a client that lost the first response must
+be able to retry without seeing a failure; what tells the two apart is the
+`Idempotent-Replayed` header, `false` on the call that moved the money and `true`
+on every replay of it.
+
+```bash
+curl -i -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
+  -H 'Content-Type: application/json' \
+  -H 'Correlation-Id: id-1' \
+  -d '{"amount":"100.00"}'
+
+# HTTP/1.1 204
+# Idempotent-Replayed: true
+```
+
+Reusing `id-1` with a *different* amount is rejected with `409 Conflict`, since the
+same key would otherwise mean two different operations.
 
 ### Errors
 
