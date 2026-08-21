@@ -38,7 +38,7 @@ is built around three answers to those problems:
   instead of silently overwriting each other
 - **Audit ledger** — every movement is recorded as an immutable transaction row, including
   both legs of a transfer
-- **RFC 7807 errors** — failures are returned as `application/problem+json`, with field-level
+- **RFC 9457 errors** — failures are returned as `application/problem+json`, with field-level
   detail for validation errors
 - **Cache-optional** — Redis accelerates idempotency lookups but is never the source of
   truth; the service runs correctly, just slower, without it
@@ -167,7 +167,7 @@ that's what makes the retry safe rather than a risk of double-processing.
 
 ### Errors
 
-Failures are `application/problem+json`, per RFC 7807:
+Failures are `application/problem+json`, per RFC 9457:
 
 ```json
 {

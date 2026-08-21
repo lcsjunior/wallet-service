@@ -96,11 +96,11 @@ persisted on its own). They are not interchangeable.
 ### Errors
 
 `ServiceException.of(message, httpStatus)` pairs the `detail` text with the status at the
-point that detects the failure, and `GlobalExceptionHandler` emits them as an RFC 7807
-`ProblemDetail`, so the handlers do not grow per error. The texts themselves live in
-`constants/Messages`; the status does not, so the same message can be thrown with
-different statuses. There is no `MessageSource` — the service speaks English only, and
-bean-validation messages sit inline on the request records.
+point that detects the failure, and `GlobalExceptionHandler` emits them as an RFC 9457
+`ProblemDetail`, so the handlers do not grow per error. The status is not carried
+alongside the text, so the same message can be thrown with different statuses; where those
+texts live is a rule in the conventions file. There is no `MessageSource` — the service
+speaks English only, and bean-validation messages sit inline on the request records.
 
 `GlobalExceptionHandler` extends `ResponseEntityExceptionHandler` and overrides
 `handleMethodArgumentNotValid` to attach the `errors` array via `FieldErrorMapper`.
@@ -108,10 +108,9 @@ bean-validation messages sit inline on the request records.
 ### Money on the wire
 
 Amounts are `BigDecimal` serialized as JSON **strings** (`@JsonFormat(shape = STRING)` on
-responses) to avoid float rounding in clients. Requests validate with `@Positive` plus
-`@Digits(integer = 17, fraction = 2)`, and direction comes from the endpoint rather than
-the payload. `Constants.ZERO_AMOUNT` uses `RoundingMode.UNNECESSARY`, which makes any
-accidental rescale fail loudly.
+responses) to avoid float rounding in clients — the monetary rules the request records
+enforce live in the conventions file. `Constants.ZERO_AMOUNT` uses
+`RoundingMode.UNNECESSARY`, which makes any accidental rescale fail loudly.
 
 ## Persistence and profiles
 
@@ -128,9 +127,9 @@ is off, so lazy associations only resolve inside the service transaction.
 `AppTests` is the shared base: `@SpringBootTest` + `MockMvc`, `test` profile, a static
 Redis container wired by `@ServiceConnection`, a `flushAll` before each test, and the
 `balanceOf(walletId)` helper for asserting balances. Integration classes extend it and
-declare `@Sql({"/mock/sql/clear-tables.sql", "/mock/sql/<name>-seed.sql"})`, so each test
-starts from a known database and an empty cache — that reset is what lets tests reuse
-fixed UUIDs and correlation ids.
+seed themselves as the conventions file prescribes, so each test starts from a known
+database and an empty cache — that reset is what lets tests reuse fixed UUIDs and
+correlation ids.
 
 `JsonUtils` reads payloads from the filesystem path `src/test/resources/mock/`, not the
 classpath, so the suite only passes when run from the project root.

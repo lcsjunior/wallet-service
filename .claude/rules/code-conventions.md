@@ -1,6 +1,6 @@
 # Code Conventions
 
-This file is never edited without the user's explicit approval — ask first before adding,
+This file is only edited with the user's prior authorization — ask first before adding,
 changing or removing any rule, and state what the code does today that motivates it.
 
 ## Architecture
@@ -13,10 +13,9 @@ changing or removing any rule, and state what the code does today that motivates
 ## Exceptions
 
 - Business errors throw `ServiceException`, never a subclass
-- Its message is a key from `messages.properties`
+- Its text is a constant from `constants/Messages`, without trailing punctuation, deleted with its last reference
 - `ProblemDetail` carries `title`, `detail`, `status`, `instance`, plus `errors` for validation failures — never a machine-readable `code`
 - `title` states the failure kind, not the specific error
-- Message keys: no hyphens, sorted alphabetically, no trailing punctuation, deleted with their last reference
 
 ## Monetary Values
 
@@ -38,12 +37,12 @@ changing or removing any rule, and state what the code does today that motivates
 ## Testing
 
 - Integration classes are suffixed `IntegrationTest`, unit classes `Test`
-- One integration class per controller, full stack, no mocks
-- Integration classes extend `AppTests`; anything shared belongs there, not duplicated
+- One integration class per controller — full stack, no mocks, extending `AppTests`; anything shared belongs there
 - Integration tests run against a real Redis and an in-memory database, both reset before every test
+- Test methods `should<Outcome>When<Condition>`, `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
 - Assert whole bodies with `.content().json(expected, STRICT)`
 - JSON payloads live under `mock/` as `{request,response}/<controller>/<payload-type>-<scenario>.json`; single-field and empty bodies come from `JsonUtils`
-- A request `<scenario>` names what the payload contains, never the outcome it provokes — an outcome depends on seeded state, so it belongs in the test name
+- A request `<scenario>` names what the payload contains; the outcome belongs in the test name
 - One seed `.sql` per test class in `mock/sql/`, holding only its `INSERT`s; every `@Sql` runs `/mock/sql/clear-tables.sql` first
 - Seeded UUIDs never repeat across files; `user_id` is the same everywhere
 - Unit tests use Mockito; `verify(...)` only to assert a collaborator was or was not called
@@ -52,18 +51,12 @@ changing or removing any rule, and state what the code does today that motivates
 
 - The image is built from the pre-compiled JAR — run `./mvnw clean package` before `docker compose up`
 - `README.md` (English only) and `CLAUDE.md` change in the same set as any change to architecture, conventions or dependencies
-- `CLAUDE.md` is at most 200 lines
-- A rule written here is never restated in `CLAUDE.md` or `README.md` — they point to this file instead
+- `CLAUDE.md` is at most 200 lines and never restates a rule from this file — it points here instead
 
 ## Style
 
 - Objects from factory methods or builders rather than direct `new`; factories named `of`
-- Method names objective, short, unabbreviated, under ~38 characters
 - `validate*` only when the method has a conditional that rejects; otherwise name it after what it does
-- A method whose return value no caller reads is `void`
-- Test methods `should<Outcome>When<Condition>`, `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
-- `var` when the type is clear from the right-hand side
 - Static-import constants and enum values, unless two enums share a value's simple name; ordinary static calls stay qualified
-- Guard clauses over nested conditionals; method references over lambdas
 - No comments or Javadoc
 - A class that logs declares `LOG_PREFIX` with its own name, prepended to the message
