@@ -1,6 +1,7 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 
 import com.example.wallet.dto.DepositRequest;
 import com.example.wallet.service.TransactionService;
@@ -29,7 +30,9 @@ public class DepositController {
       @PathVariable UUID walletId,
       @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
       @Valid @RequestBody DepositRequest request) {
-    transactionService.deposit(walletId, request.amount(), correlationId);
-    return ResponseEntity.noContent().build();
+    var outcome = transactionService.deposit(walletId, request.amount(), correlationId);
+    return ResponseEntity.noContent()
+        .header(IDEMPOTENT_REPLAYED_HEADER, String.valueOf(outcome.isReplayed()))
+        .build();
   }
 }

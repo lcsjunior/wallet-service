@@ -3,10 +3,13 @@ package com.example.wallet.service;
 import static com.example.wallet.constants.Messages.CORRELATION_ID_CONFLICT;
 import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
 import static com.example.wallet.constants.Messages.SAME_WALLET_TRANSFER;
+import static com.example.wallet.dto.TransactionOutcome.APPLIED;
+import static com.example.wallet.dto.TransactionOutcome.REPLAYED;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
+import com.example.wallet.dto.TransactionOutcome;
 import com.example.wallet.entity.IdempotencyEntry;
 import com.example.wallet.entity.OperationType;
 import com.example.wallet.entity.TransactionType;
@@ -44,11 +47,11 @@ public class TransactionService {
   }
 
   @Transactional
-  public void deposit(UUID walletId, BigDecimal amount, String correlationId) {
+  public TransactionOutcome deposit(UUID walletId, BigDecimal amount, String correlationId) {
     var idempotencyEntry =
         IdempotencyEntry.of(correlationId, OperationType.DEPOSIT, walletId.toString(), amount);
     if (isReplay(idempotencyEntry)) {
-      return;
+      return REPLAYED;
     }
 
     var wallet = walletRepository.findWallet(walletId);
@@ -66,14 +69,16 @@ public class TransactionService {
     walletTransactionRepository.save(transaction);
 
     idempotencyRepository.save(idempotencyEntry);
+
+    return APPLIED;
   }
 
   @Transactional
-  public void withdraw(UUID walletId, BigDecimal amount, String correlationId) {
+  public TransactionOutcome withdraw(UUID walletId, BigDecimal amount, String correlationId) {
     var idempotencyEntry =
         IdempotencyEntry.of(correlationId, OperationType.WITHDRAWAL, walletId.toString(), amount);
     if (isReplay(idempotencyEntry)) {
-      return;
+      return REPLAYED;
     }
 
     var wallet = walletRepository.findWallet(walletId);
@@ -92,17 +97,19 @@ public class TransactionService {
     walletTransactionRepository.save(transaction);
 
     idempotencyRepository.save(idempotencyEntry);
+
+    return APPLIED;
   }
 
   @Transactional
-  public void transfer(
+  public TransactionOutcome transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
     rejectSelfTransfer(fromWalletId, toWalletId);
     var idempotencyEntry =
         IdempotencyEntry.of(
             correlationId, OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
     if (isReplay(idempotencyEntry)) {
-      return;
+      return REPLAYED;
     }
 
     var fromWallet = walletRepository.findWallet(fromWalletId);
@@ -133,6 +140,8 @@ public class TransactionService {
             .build());
 
     idempotencyRepository.save(idempotencyEntry);
+
+    return APPLIED;
   }
 
   private void rejectSelfTransfer(UUID fromWalletId, UUID toWalletId) {

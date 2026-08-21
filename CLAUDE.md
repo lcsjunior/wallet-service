@@ -52,11 +52,18 @@ type, the wallet key (`from->to` for transfers) and the plain-string amount.
 
 1. looks the correlation id up in `IdempotencyRepository`;
 2. absent → proceeds and, at the end, persists that same entry;
-3. present with the same fingerprint → returns silently, no balance change;
+3. present with the same fingerprint → returns without touching any balance;
 4. present with a different fingerprint → `CORRELATION_ID_CONFLICT` (409).
 
 The fingerprint is what makes "same key, different body" a conflict instead of a silent
 no-op — it carries every business parameter of the operation.
+
+A replay stays a success — the retry after a lost response must not look like a failure.
+Each `TransactionService` method returns `TransactionOutcome` — `APPLIED` or `REPLAYED`,
+a third enum but one that shares no value name with the other two — and the three
+controllers echo `isReplayed` as `Idempotent-Replayed: true|false` on the `204`. Since the
+response carries no body, that header is the only way a client tells a replay from a first
+run.
 
 ### Redis is an accelerator, never the truth
 
