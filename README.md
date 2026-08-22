@@ -7,41 +7,18 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](https://spring.io/projects/spring-boot)
 
 A RESTful microservice that manages wallets: deposits, withdrawals, and transfers between
-users, built to be safe to retry and easy to reconcile.
-
-> [!NOTE]
-> This is a programming challenge, not a production payments system. It uses an
-> in-memory database and a single-node design.
-
-## Why this exists
-
-Money movement APIs fail in specific, well-known ways: a client retries a timed-out
-request and double-charges someone, two concurrent requests race on the same balance, or
-an operator can't tell after the fact what actually happened to a wallet. Wallet Service
-is built around three answers to those problems:
-
-- Every mutation is **idempotent** by a client-supplied correlation id, so retries are
-  free.
-- Every balance update is **optimistically locked**, so concurrent writes fail loudly
-  instead of silently corrupting a balance.
-- Every movement is **appended to an immutable ledger**, so balances can always be
-  reconciled after the fact.
+users. Programming challenge, not a production payments system — in-memory database,
+single node.
 
 ## Features
 
-- **Wallets** — create a wallet for a user; a user may hold more than one
-- **Deposits & withdrawals** — single-wallet money movement
-- **Transfers** — move funds between two wallets in one atomic operation
-- **Idempotency** — retry any mutation safely with a `Correlation-Id` header; replays are
-  flagged, never rejected
-- **Optimistic concurrency** — concurrent updates to the same wallet fail with `409`
-  instead of silently overwriting each other
-- **Audit ledger** — every movement is recorded as an immutable transaction row, including
-  both legs of a transfer
-- **RFC 9457 errors** — failures are returned as `application/problem+json`, with field-level
-  detail for validation errors
-- **Cache-optional** — Redis accelerates idempotency lookups but is never the source of
-  truth; the service runs correctly, just slower, without it
+- Wallets — a user may hold more than one
+- Deposits, withdrawals, and transfers between two wallets
+- Idempotent mutations via a `Correlation-Id` header; replays are flagged, never rejected
+- Optimistic locking — concurrent updates to the same wallet fail with `409`
+- Immutable audit ledger, with both legs of a transfer recorded
+- RFC 9457 errors (`application/problem+json`)
+- Redis optional — accelerates idempotency lookups, never the source of truth
 
 ## Tech stack
 
@@ -50,7 +27,7 @@ is built around three answers to those problems:
 | Language | Java 21 |
 | Framework | Spring Boot 3.5 (Web, Data JPA, Validation, Actuator) |
 | Database | H2, in-memory, PostgreSQL compatibility mode |
-| Cache | Redis 7 (optional accelerator, not a dependency for correctness) |
+| Cache | Redis 7 |
 | Mapping | MapStruct |
 | API docs | springdoc-openapi / Swagger UI |
 | Build | Maven Wrapper |
@@ -58,14 +35,7 @@ is built around three answers to those problems:
 
 ## Getting started
 
-### Prerequisites
-
-- Java 21
-- Docker (used by the test suite for a Redis Testcontainer, and by `docker compose`)
-
-### Run with Docker Compose
-
-Builds the JAR, then starts the service and Redis together:
+Requires Java 21 and Docker.
 
 ```bash
 ./mvnw clean package
@@ -78,23 +48,24 @@ docker compose up --build
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | Health | `http://localhost:8080/actuator/health` |
 
-### Run locally
-
-Needs a Redis instance reachable on `localhost:6379` (or set `CACHE_TYPE=none` to skip
-caching entirely):
+Or locally, with Redis on `localhost:6379` (or `CACHE_TYPE=none`):
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The `dev` profile switches to plain-text logs and exposes the H2 console at
-`/h2-console`.
+The `dev` profile adds plain-text logs and the H2 console at `/h2-console`. The database
+is in-memory: every restart starts empty.
 
-> [!NOTE]
-> The database is in-memory, so every restart starts empty — there's nothing to migrate
-> or seed.
+## API
 
-## Using the API
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/v1/wallets` | Create a wallet for a user |
+| `GET` | `/v1/wallets/{walletId}/balance` | Read the current balance |
+| `POST` | `/v1/wallets/{walletId}/deposits` | Credit a wallet |
+| `POST` | `/v1/wallets/{walletId}/withdrawals` | Debit a wallet |
+| `POST` | `/v1/transfers` | Move funds between two wallets |
 
 ```bash
 # Create a wallet — 201 Created
@@ -120,54 +91,10 @@ curl http://localhost:8080/v1/wallets/$WALLET_ID/balance
 # {"balance":"75.00"}
 ```
 
-Amounts are always JSON strings, never numbers — this avoids float rounding on the
-client. The direction of the movement (credit or debit) comes from the endpoint, not the
-payload.
-
-### Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/v1/wallets` | Create a wallet for a user |
-| `GET` | `/v1/wallets/{walletId}/balance` | Read the current balance |
-| `POST` | `/v1/wallets/{walletId}/deposits` | Credit a wallet |
-| `POST` | `/v1/wallets/{walletId}/withdrawals` | Debit a wallet |
-| `POST` | `/v1/transfers` | Move funds between two wallets |
-
-All three mutating endpoints require a `Correlation-Id` header and return `204 No
-Content` with an `Idempotent-Replayed` header (`true`/`false`).
-
-### Idempotency
-
-> [!IMPORTANT]
-> A replay always answers `204 No Content` — never a failure. A client that lost the
-> original response must be able to retry blindly. `Idempotent-Replayed` is the only
-> signal that distinguishes a replay from the call that actually moved money.
-
-Replaying the deposit above with the same `Correlation-Id` and the same body is a no-op:
-the balance is credited once, no matter how many times the request arrives.
-
-```bash
-curl -i -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
-  -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: 8f14e45f-1d6f-4f1a-9a3e-0e1c2f4b5a6d' \
-  -d '{"amount":"100.00"}'
-# HTTP/1.1 204
-# Idempotent-Replayed: true
-```
-
-Reusing the same `Correlation-Id` with a *different* amount is rejected with `409
-Conflict` — the same key can't silently mean two different operations.
-
-### Concurrency
-
-Wallet balances use optimistic locking. Two concurrent requests against the same wallet
-race; the loser gets `409 Conflict` and can retry with the *same* `Correlation-Id` —
-that's what makes the retry safe rather than a risk of double-processing.
+Amounts are JSON strings, never numbers. Mutating endpoints require `Correlation-Id` and
+answer `204 No Content` with `Idempotent-Replayed: true|false`.
 
 ### Errors
-
-Failures are `application/problem+json`, per RFC 9457:
 
 ```json
 {
@@ -178,10 +105,6 @@ Failures are `application/problem+json`, per RFC 9457:
   "instance": "/v1/wallets/55e476d1-f217-4583-a75a-0dd0a548c858/deposits"
 }
 ```
-
-`title` is `Business violation` for domain failures and `Validation error` for invalid
-payloads or missing headers; validation failures also carry an `errors` array of
-`{field, message}` entries.
 
 | Status | When |
 |---|---|
@@ -199,39 +122,20 @@ payloads or missing headers; validation failures also carry an `errors` array of
 | `REDIS_PORT` | `6379` | Redis port |
 | `CACHE_TYPE` | `redis` | Set to `none` to disable caching entirely |
 
-Redis is an accelerator for idempotency lookups only — the database is always the source
-of truth, and a Redis outage degrades to slower, not incorrect, behavior.
-
-## Testing
-
-```bash
-./mvnw test
-```
-
-> [!IMPORTANT]
-> Docker must be running — the integration suite starts a real Redis container per test
-> class.
-
-Every controller has a full-stack integration test against a real Redis and an
-in-memory database, both reset before each test.
-
 ## Development
 
 ```bash
-./mvnw spotless:apply     # format
-./mvnw verify              # test + format check
+./mvnw test              # Docker must be running
+./mvnw verify            # test + format check
+./mvnw spotless:apply    # format
+
+git config core.hooksPath .githooks   # once per clone, formats staged files
 ```
 
-A pre-commit hook formats staged files automatically; enable it once per clone:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-Project conventions (architecture, error handling, testing rules, style) live in
+Conventions live in
 [`.claude/rules/code-conventions.md`](.claude/rules/code-conventions.md).
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs `clean verify sonar:sonar` on every pull request to
-`main` and on pushes to it, and blocks the merge on a red SonarCloud quality gate.
+`.github/workflows/ci.yml` runs `clean verify sonar:sonar` on pull requests to `main` and
+pushes to it, blocking the merge on a red SonarCloud quality gate.

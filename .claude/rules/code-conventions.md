@@ -47,11 +47,15 @@ changing or removing any rule, and state what the code does today that motivates
 - Seeded UUIDs never repeat across files; `user_id` is the same everywhere
 - Unit tests use Mockito; `verify(...)` only to assert a collaborator was or was not called
 
-## Docker & Docs
+## Docker
 
 - The image is built from the pre-compiled JAR — run `./mvnw clean package` before `docker compose up`
-- `README.md` (English only) and `CLAUDE.md` change in the same set as any change to architecture, conventions or dependencies
-- `CLAUDE.md` is at most 200 lines and never restates a rule from this file — it points here instead
+
+## Docs
+
+- `README.md` (English only) and `CLAUDE.md` change in the same set as any change to what a consumer of the API or someone running the project has to know — build, test and CI plumbing does not qualify
+- `README.md` is at most 250 lines, `CLAUDE.md` at most 200; `CLAUDE.md` never restates a rule from this file — it points here instead
+- Editing either file replaces text rather than appending to it; why a change was made belongs in the commit message, never in the doc
 
 ## Style
 
