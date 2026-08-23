@@ -1,7 +1,6 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -9,7 +8,6 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.AppTests;
@@ -41,8 +39,7 @@ class TransferControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
                 .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
+        .andExpect(status().isNoContent());
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
@@ -128,52 +125,27 @@ class TransferControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 204 sem mover o saldo de novo quando o Correlation-Id se repete")
-  void shouldSkipWhenCorrelationIdRepeats() throws Exception {
+  @DisplayName("Deve retornar 409 sem mover o saldo de novo quando o Correlation-Id se repete")
+  void shouldRejectWhenCorrelationIdRepeats() throws Exception {
     mockMvc
         .perform(
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
-
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
-
-    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
-    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
-  }
-
-  @Test
-  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
-  void shouldRejectWhenCorrelationIdReused() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
         .andExpect(status().isNoContent());
 
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "10.00")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content().json(loadJson("response/transfer/error-correlation-conflict.json"), STRICT));
 
-    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
-    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("75.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("25.00");
   }
 }

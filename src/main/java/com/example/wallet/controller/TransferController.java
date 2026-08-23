@@ -1,7 +1,6 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 
 import com.example.wallet.dto.TransferRequest;
 import com.example.wallet.service.TransactionService;
@@ -28,11 +27,8 @@ public class TransferController {
   public ResponseEntity<Void> transfer(
       @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
       @Valid @RequestBody TransferRequest request) {
-    var outcome =
-        transactionService.transfer(
-            request.fromWalletId(), request.toWalletId(), request.amount(), correlationId);
-    return ResponseEntity.noContent()
-        .header(IDEMPOTENT_REPLAYED_HEADER, String.valueOf(outcome.isReplayed()))
-        .build();
+    transactionService.transfer(
+        request.fromWalletId(), request.toWalletId(), request.amount(), correlationId);
+    return ResponseEntity.noContent().build();
   }
 }

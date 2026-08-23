@@ -16,11 +16,11 @@ single node.
 - Wallets — a user may hold more than one, so a repeated `Correlation-Id` is rejected, never
   silently duplicated
 - Deposits, withdrawals, and transfers between two wallets
-- Money movements are idempotent via a `Correlation-Id` header; replays are flagged, never rejected
+- Every mutation is guarded by a `Correlation-Id`: a unique constraint in the database answers
+  `409` to a repeat, so nothing is ever applied twice
 - Optimistic locking — concurrent updates to the same wallet fail with `409`
 - Immutable audit ledger, with both legs of a transfer recorded
 - RFC 9457 errors (`application/problem+json`)
-- Redis optional — accelerates idempotency lookups, never the source of truth
 
 ## Tech stack
 
@@ -29,7 +29,6 @@ single node.
 | Language | Java 21 |
 | Framework | Spring Boot 3.5 (Web, Data JPA, Validation, Actuator) |
 | Database | H2, in-memory, PostgreSQL compatibility mode |
-| Cache | Redis 7 |
 | Mapping | MapStruct |
 | API docs | springdoc-openapi / Swagger UI |
 | Build | Maven Wrapper |
@@ -37,7 +36,7 @@ single node.
 
 ## Getting started
 
-Requires Java 21 and Docker.
+Requires Java 21; Docker only for `docker compose`.
 
 ```bash
 ./mvnw clean package
@@ -50,7 +49,7 @@ docker compose up --build
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | Health | `http://localhost:8080/actuator/health` |
 
-Or locally, with Redis on `localhost:6379` (or `CACHE_TYPE=none`):
+Or locally:
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
@@ -79,7 +78,7 @@ curl -X POST http://localhost:8080/v1/wallets \
   -d '{"userId":"3f2504e0-4f89-11d3-9a0c-0305e82c3301"}'
 # {"walletId":"6163fb26-3a06-4080-a987-35c5e5a17297","createdAt":"..."}
 
-# Deposit — 204 No Content, Idempotent-Replayed: false
+# Deposit — 204 No Content
 curl -i -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
   -H 'Content-Type: application/json' \
   -H 'Correlation-Id: 8f14e45f-1d6f-4f1a-9a3e-0e1c2f4b5a6d' \
@@ -92,10 +91,10 @@ curl -i -X POST http://localhost:8080/v1/transfers \
   -d '{"fromWalletId":"'$FROM'","toWalletId":"'$TO'","amount":"25.00"}'
 ```
 
-Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`. The money
-movements answer `204 No Content` with `Idempotent-Replayed: true|false`; wallet creation
-answers `201 Created` with the wallet, and reusing its `Correlation-Id` answers `409` instead
-of creating a second one.
+Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`, and reusing
+one answers `409` rather than applying the request twice — there is no silent replay. The money
+movements answer `204 No Content` with no body; wallet creation answers `201 Created` with the
+wallet.
 
 ### Errors
 
@@ -113,7 +112,7 @@ of creating a second one.
 |---|---|
 | `400 Bad Request` | Invalid payload, missing `Correlation-Id`, transfer to the same wallet |
 | `404 Not Found` | Wallet does not exist |
-| `409 Conflict` | `Correlation-Id` reused with different parameters, or a concurrent update lost the optimistic lock |
+| `409 Conflict` | `Correlation-Id` already used on that wallet, or a concurrent update lost the optimistic lock |
 | `422 Unprocessable Entity` | Insufficient balance |
 
 ## Configuration
@@ -121,14 +120,11 @@ of creating a second one.
 | Variable | Default | Purpose |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | *(none)* | `dev` for SQL logging and the H2 console |
-| `REDIS_HOST` | `localhost` | Redis hostname |
-| `REDIS_PORT` | `6379` | Redis port |
-| `CACHE_TYPE` | `redis` | Set to `none` to disable caching entirely |
 
 ## Development
 
 ```bash
-./mvnw test              # Docker must be running
+./mvnw test              # run the suite
 ./mvnw verify            # test + format check
 ./mvnw spotless:apply    # format
 

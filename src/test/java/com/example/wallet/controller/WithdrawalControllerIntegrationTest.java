@@ -1,7 +1,6 @@
 package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -9,7 +8,6 @@ import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TE
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.AppTests;
@@ -40,8 +38,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
+        .andExpect(status().isNoContent());
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
@@ -93,36 +90,12 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 204 sem debitar de novo quando o Correlation-Id se repete")
-  void shouldSkipWhenCorrelationIdRepeats() throws Exception {
+  @DisplayName("Deve retornar 409 sem debitar de novo quando o Correlation-Id se repete")
+  void shouldRejectWhenCorrelationIdRepeats() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("30.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
-
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("30.00")))
-        .andExpect(status().isNoContent())
-        .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
-
-    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
-  }
-
-  @Test
-  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
-  void shouldRejectWhenCorrelationIdReused() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent());
@@ -130,9 +103,9 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("40.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content()
