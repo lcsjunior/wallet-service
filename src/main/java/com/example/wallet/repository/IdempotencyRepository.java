@@ -10,10 +10,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface IdempotencyRepository extends JpaRepository<IdempotencyEntry, UUID> {
 
   @Override
-  @Cacheable(cacheNames = "idempotencyEntry", key = "#correlationId", unless = "#result == null")
+  @Cacheable(cacheNames = "idempotency-entry", key = "#correlationId", unless = "#result == null")
   Optional<IdempotencyEntry> findById(UUID correlationId);
 
   @Override
-  @CachePut(cacheNames = "idempotencyEntry", key = "#entity.correlationId")
+  @CachePut(cacheNames = "idempotency-entry", key = "#entity.correlationId")
   <S extends IdempotencyEntry> S save(S entity);
 }
