@@ -32,7 +32,7 @@ formats staged files — enable it once per clone with
 Layering is `controller → service → repository`, with MapStruct between entity and DTO.
 Four controllers under `/v1`, two services, three repositories.
 
-- `WalletService` — wallet creation and balance reads. The only user of `WalletMapper`.
+- `WalletService` — wallet creation. The only user of `WalletMapper`.
 - `TransactionService` — all money movement (`deposit`, `withdraw`, `transfer`). Each
   method is one `@Transactional` unit touching wallets, the ledger and the idempotency
   table together.
@@ -46,7 +46,8 @@ instead of returning `Optional` — callers never handle absence themselves.
 
 ### Idempotency
 
-Every mutation requires a `Correlation-Id` header. `IdempotencyEntry.of` derives a
+Every endpoint requires a `Correlation-Id` header, but only the three money movements key
+idempotency off it — wallet creation merely carries it into the logs. `IdempotencyEntry.of` derives a
 *fingerprint* — `operationType:key:amount`, where `key` is the wallet id, or
 `from->to` for transfers. `TransactionService.isReplay` then:
 
@@ -88,6 +89,16 @@ appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceA
 `correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
 `TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone.
 
+### Request logging
+
+`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE`, so its MDC entry is in place for
+everything downstream, `GlobalExceptionHandler` included. It logs one line as the request
+enters (`method`, `uri`) and one from a `finally` as it leaves (`status`, `durationMs`), so
+a failed request still logs its end. The `Correlation-Id` header goes under the MDC key
+`correlationId` when it is present, and is simply absent from the MDC otherwise — nothing is
+generated, since every endpoint requires the header. ECS console logging renders MDC entries
+as top-level fields.
+
 ### Errors
 
 `ServiceException.of(message, httpStatus)` pairs the `detail` text with the status at the
@@ -114,7 +125,7 @@ entities, there are no migration scripts, and every restart starts empty. `open-
 off, so lazy associations only resolve inside the service transaction.
 
 - default — ECS JSON logging, H2 console off
-- `dev` — plain-text logs, SQL logging, H2 console at `/h2-console`; used by `docker compose`
+- `dev` — SQL logging, H2 console at `/h2-console`; used by `docker compose`
 - `test` — `ddl-auto=create-drop`, plain-text logs
 
 ## Tests
