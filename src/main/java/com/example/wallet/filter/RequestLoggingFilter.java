@@ -2,6 +2,8 @@ package com.example.wallet.filter;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.constants.Constants.CORRELATION_ID_MDC_KEY;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_MDC_KEY;
 import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 
 import jakarta.servlet.FilterChain;
@@ -22,18 +24,19 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-    putCorrelationId(request);
+    put(CORRELATION_ID_MDC_KEY, request.getHeader(CORRELATION_ID_HEADER));
+    put(IDEMPOTENCY_KEY_MDC_KEY, request.getHeader(IDEMPOTENCY_KEY_HEADER));
     try {
       filterChain.doFilter(request, response);
     } finally {
       MDC.remove(CORRELATION_ID_MDC_KEY);
+      MDC.remove(IDEMPOTENCY_KEY_MDC_KEY);
     }
   }
 
-  private void putCorrelationId(HttpServletRequest request) {
-    var correlationId = request.getHeader(CORRELATION_ID_HEADER);
-    if (correlationId != null) {
-      MDC.put(CORRELATION_ID_MDC_KEY, correlationId);
+  private void put(String mdcKey, String headerValue) {
+    if (headerValue != null) {
+      MDC.put(mdcKey, headerValue);
     }
   }
 }

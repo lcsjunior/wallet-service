@@ -1,6 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
 import static com.example.wallet.testutils.JsonUtils.emptyJson;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,7 +36,7 @@ class WalletControllerIntegrationTest extends AppTests {
         mockMvc
             .perform(
                 post("/v1/wallets")
-                    .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
+                    .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000001")
                     .contentType(APPLICATION_JSON)
                     .content(createWalletJson(USER_ID)))
             .andExpect(status().isCreated())
@@ -50,12 +50,12 @@ class WalletControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 409 e não duplicar a carteira quando o Correlation-Id é repetido")
-  void shouldRejectWhenCorrelationIdIsRepeated() throws Exception {
+  @DisplayName("Deve retornar 409 e não duplicar a carteira quando o Idempotency-Key é repetido")
+  void shouldRejectWhenIdempotencyKeyIsRepeated() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
@@ -63,23 +63,24 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isConflict())
         .andExpect(
-            content().json(loadJson("response/wallet/error-correlation-conflict.json"), STRICT));
+            content().json(loadJson("response/wallet/error-idempotency-conflict.json"), STRICT));
 
     assertThat(walletRepository.count()).isEqualTo(1);
   }
 
   @Test
-  @DisplayName("Deve retornar 201 e outra carteira quando o mesmo usuário usa outro Correlation-Id")
-  void shouldCreateSecondWalletWhenCorrelationIdDiffers() throws Exception {
+  @DisplayName(
+      "Deve retornar 201 e outra carteira quando o mesmo usuário usa outro Idempotency-Key")
+  void shouldCreateSecondWalletWhenIdempotencyKeyDiffers() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
@@ -87,7 +88,7 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
@@ -101,7 +102,7 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(emptyJson()))
         .andExpect(status().isBadRequest())
@@ -109,13 +110,13 @@ class WalletControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 400 quando o Correlation-Id não é informado")
-  void shouldRejectWhenCorrelationIdIsMissing() throws Exception {
+  @DisplayName("Deve retornar 400 quando o Idempotency-Key não é informado")
+  void shouldRejectWhenIdempotencyKeyIsMissing() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets").contentType(APPLICATION_JSON).content(createWalletJson(USER_ID)))
         .andExpect(status().isBadRequest())
         .andExpect(
-            content().json(loadJson("response/wallet/error-missing-correlation-id.json"), STRICT));
+            content().json(loadJson("response/wallet/error-missing-idempotency-key.json"), STRICT));
   }
 }

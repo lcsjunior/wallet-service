@@ -1,7 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
 
 import com.example.wallet.dto.WithdrawalRequest;
 import com.example.wallet.service.TransactionService;
@@ -28,11 +27,9 @@ public class WithdrawalController {
   @PostMapping
   public ResponseEntity<Void> withdraw(
       @PathVariable UUID walletId,
-      @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
+      @RequestHeader(IDEMPOTENCY_KEY_HEADER) UUID idempotencyKey,
       @Valid @RequestBody WithdrawalRequest request) {
-    var outcome = transactionService.withdraw(walletId, request.amount(), correlationId);
-    return ResponseEntity.noContent()
-        .header(IDEMPOTENT_REPLAYED_HEADER, String.valueOf(outcome.isReplayed()))
-        .build();
+    transactionService.withdraw(walletId, request.amount(), idempotencyKey);
+    return ResponseEntity.noContent().build();
   }
 }

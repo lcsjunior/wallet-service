@@ -1,14 +1,12 @@
 package com.example.wallet.service;
 
 import static com.example.wallet.constants.Messages.SAME_WALLET_TRANSFER;
-import static com.example.wallet.dto.TransactionOutcome.APPLIED;
-import static com.example.wallet.dto.TransactionOutcome.REPLAYED;
+import static com.example.wallet.entity.TransactionType.DEPOSIT;
+import static com.example.wallet.entity.TransactionType.TRANSFER_CREDIT;
+import static com.example.wallet.entity.TransactionType.TRANSFER_DEBIT;
+import static com.example.wallet.entity.TransactionType.WITHDRAWAL;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
-import com.example.wallet.dto.TransactionOutcome;
-import com.example.wallet.entity.IdempotencyEntry;
-import com.example.wallet.entity.OperationType;
-import com.example.wallet.entity.TransactionType;
 import com.example.wallet.entity.WalletTransaction;
 import com.example.wallet.exception.ServiceException;
 import com.example.wallet.repository.WalletRepository;
@@ -23,93 +21,48 @@ public class TransactionService {
 
   private final WalletRepository walletRepository;
   private final WalletTransactionRepository walletTransactionRepository;
-  private final IdempotencyService idempotencyService;
 
   public TransactionService(
-      WalletRepository walletRepository,
-      WalletTransactionRepository walletTransactionRepository,
-      IdempotencyService idempotencyService) {
+      WalletRepository walletRepository, WalletTransactionRepository walletTransactionRepository) {
     this.walletRepository = walletRepository;
     this.walletTransactionRepository = walletTransactionRepository;
-    this.idempotencyService = idempotencyService;
   }
 
   @Transactional
-  public TransactionOutcome deposit(UUID walletId, BigDecimal amount, UUID correlationId) {
-    var idempotencyEntry =
-        IdempotencyEntry.builder()
-            .correlationId(correlationId)
-            .operationType(OperationType.DEPOSIT)
-            .key(walletId.toString())
-            .amount(amount)
-            .build();
-    if (idempotencyService.isReplay(idempotencyEntry)) {
-      return REPLAYED;
-    }
-
+  public void deposit(UUID walletId, BigDecimal amount, UUID idempotencyKey) {
     var wallet = walletRepository.findWallet(walletId);
     wallet.credit(amount);
     walletRepository.save(wallet);
 
-    walletTransactionRepository.save(
+    walletTransactionRepository.saveAndFlush(
         WalletTransaction.builder()
             .walletId(wallet.getId())
-            .type(TransactionType.DEPOSIT)
+            .type(DEPOSIT)
             .amount(amount)
             .balanceAfter(wallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .build());
-
-    idempotencyService.save(idempotencyEntry);
-
-    return APPLIED;
   }
 
   @Transactional
-  public TransactionOutcome withdraw(UUID walletId, BigDecimal amount, UUID correlationId) {
-    var idempotencyEntry =
-        IdempotencyEntry.builder()
-            .correlationId(correlationId)
-            .operationType(OperationType.WITHDRAWAL)
-            .key(walletId.toString())
-            .amount(amount)
-            .build();
-    if (idempotencyService.isReplay(idempotencyEntry)) {
-      return REPLAYED;
-    }
-
+  public void withdraw(UUID walletId, BigDecimal amount, UUID idempotencyKey) {
     var wallet = walletRepository.findWallet(walletId);
     wallet.debit(amount);
     walletRepository.save(wallet);
 
-    walletTransactionRepository.save(
+    walletTransactionRepository.saveAndFlush(
         WalletTransaction.builder()
             .walletId(wallet.getId())
-            .type(TransactionType.WITHDRAWAL)
+            .type(WITHDRAWAL)
             .amount(amount)
             .balanceAfter(wallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .build());
-
-    idempotencyService.save(idempotencyEntry);
-
-    return APPLIED;
   }
 
   @Transactional
-  public TransactionOutcome transfer(
-      UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID correlationId) {
+  public void transfer(UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID idempotencyKey) {
     validateSelfTransfer(fromWalletId, toWalletId);
-    var idempotencyEntry =
-        IdempotencyEntry.builder()
-            .correlationId(correlationId)
-            .operationType(OperationType.TRANSFER)
-            .key(fromWalletId + "->" + toWalletId)
-            .amount(amount)
-            .build();
-    if (idempotencyService.isReplay(idempotencyEntry)) {
-      return REPLAYED;
-    }
 
     var fromWallet = walletRepository.findWallet(fromWalletId);
     var toWallet = walletRepository.findWallet(toWalletId);
@@ -118,28 +71,24 @@ public class TransactionService {
     walletRepository.save(fromWallet);
     walletRepository.save(toWallet);
 
-    walletTransactionRepository.save(
+    walletTransactionRepository.saveAndFlush(
         WalletTransaction.builder()
             .walletId(fromWallet.getId())
-            .type(TransactionType.TRANSFER_DEBIT)
+            .type(TRANSFER_DEBIT)
             .amount(amount)
             .balanceAfter(fromWallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .peerWalletId(toWallet.getId())
             .build());
-    walletTransactionRepository.save(
+    walletTransactionRepository.saveAndFlush(
         WalletTransaction.builder()
             .walletId(toWallet.getId())
-            .type(TransactionType.TRANSFER_CREDIT)
+            .type(TRANSFER_CREDIT)
             .amount(amount)
             .balanceAfter(toWallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .peerWalletId(fromWallet.getId())
             .build());
-
-    idempotencyService.save(idempotencyEntry);
-
-    return APPLIED;
   }
 
   private void validateSelfTransfer(UUID fromWalletId, UUID toWalletId) {

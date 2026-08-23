@@ -11,7 +11,7 @@ This file describes how the codebase works; it states no rules of its own.
 
 ```bash
 ./mvnw clean package                  # build the JAR (required before docker compose up)
-./mvnw test                           # run the suite (Docker must be running)
+./mvnw test                           # run the suite
 ./mvnw verify                         # test + spotless:check
 ./mvnw spotless:apply                 # format (google-java-format)
 ./mvnw clean verify sonar:sonar       # what CI runs
@@ -19,26 +19,22 @@ This file describes how the codebase works; it states no rules of its own.
 ./mvnw test -Dtest=TransferControllerIntegrationTest
 ./mvnw test -Dtest=TransferControllerIntegrationTest#shouldRejectWhenBalanceIsInsufficient
 
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # local run, needs Redis on :6379
-docker compose up --build                               # app + Redis together
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev   # local run
+docker compose up --build                               # app in a container
 ```
 
-Tests start a `redis:7-alpine` Testcontainer, so Docker must be up. A pre-commit hook also
-formats staged files — enable it once per clone with
-`git config core.hooksPath .githooks`.
+The suite needs no container of its own. A pre-commit hook formats staged files — enable it
+once per clone with `git config core.hooksPath .githooks`.
 
 ## Architecture
 
 Layering is `controller → service → repository`, with MapStruct between entity and DTO.
-Four controllers under `/v1`, three services, three repositories.
+Four controllers under `/v1`, two services, two repositories.
 
 - `WalletService` — wallet creation. The only user of `WalletMapper`.
 - `TransactionService` — all money movement (`deposit`, `withdraw`, `transfer`). Each
-  method is one `@Transactional` unit touching wallets, the ledger and the idempotency
-  table together.
-- `IdempotencyService` — replay detection and entry persistence. The only user of
-  `IdempotencyRepository`; it declares no transaction of its own and runs inside the
-  caller's.
+  method is one `@Transactional` unit touching the wallet and the ledger together, and
+  returns `void`.
 
 `TransferController` sits at `/v1/transfers` rather than under a wallet, because a
 transfer belongs to two wallets; deposits and withdrawals nest under
@@ -49,70 +45,55 @@ instead of returning `Optional` — callers never handle absence themselves.
 
 ### Idempotency
 
-Every endpoint requires a `Correlation-Id` header, and no mutation can be applied twice under
-the same one — but the three money movements and wallet creation get there by different routes,
-and only the movements replay.
+Every endpoint requires an `Idempotency-Key` header — a UUID — and no mutation can be applied
+twice under the same one. There is one mechanism for all four: a unique constraint, and no read
+before the insert. The database is the only thing deciding, which is also what covers two
+concurrent requests carrying the same key.
 
-The money movements go through `IdempotencyService`. `IdempotencyEntry`'s builder derives a
-*fingerprint* — `operationType:key:amount`, where `key` is the wallet id, or
-`from->to` for transfers. `IdempotencyService.isReplay` then:
+- creation — `Wallet.idempotencyKey` is `unique`; `WalletService.createWallet` calls
+  `saveAndFlush` and a repeat loses the constraint;
+- movements — `uk_wallet_transaction_wallet_idempotency_key` on `(wallet_id, idempotency_key)`;
+  each ledger insert is a `saveAndFlush`, so a repeat loses the constraint before the method
+  returns and the balance change rolls back with it.
 
-1. looks the correlation id up in `IdempotencyRepository`;
-2. absent → proceeds, and persists the entry at the end of the method;
-3. present, same fingerprint → returns `REPLAYED` without touching a balance;
-4. present, different fingerprint → `CORRELATION_ID_CONFLICT` (409).
+Either way `GlobalExceptionHandler` turns the `DataIntegrityViolationException` into `409`
+with `ENTITY_CONFLICT`. Nothing replays: there is no `Idempotent-Replayed` header and no
+outcome type — a movement either applies and answers `204`, or conflicts and answers `409`.
 
-The fingerprint carries every business parameter, which is what makes "same key,
-different body" a conflict instead of a silent no-op.
+Two consequences of letting the constraint decide. A client that retries after a timeout gets
+`409` rather than the original result, and there is no endpoint to look either up. And the
+domain rules run first, so a retried movement whose balance no longer covers it answers `422`
+before the constraint is ever reached.
 
-Wallet creation does not use that table and does not replay. `Wallet` carries the
-`correlationId` itself, `unique`, and `WalletService.createWallet` simply inserts — a repeated
-correlation id loses the constraint at flush and `GlobalExceptionHandler` turns the
-`DataIntegrityViolationException` into `409`. There is no read before the insert, so the
-database is the only thing deciding, and the same constraint covers two concurrent creates.
-The cost of that simplicity: a client that retries after a timeout gets `409` rather than the
-wallet it created, and there is no endpoint to look it up.
-
-Each money movement returns `TransactionOutcome` (`APPLIED` / `REPLAYED`) and its controller
-echoes `outcome.isReplayed()` as `Idempotent-Replayed: true|false` on the `204`. The response
-has no body, so that header is the only replay signal those clients get. Creation carries no
-such header — there is no replay to signal.
-
-Note the two enums: `TransactionType` (ledger rows, four values including both transfer
-legs) and `OperationType` (first segment of the fingerprint, three values). They are not
-interchangeable.
-
-### Redis
-
-The database is the source of truth. `IdempotencyRepository` is the only cached repository
-— `@Cacheable` on `findById` with `unless = "#result == null"`, `@CachePut` on `save`.
-`CacheConfig` installs a `LoggingCacheErrorHandler`, so a Redis outage degrades to database
-lookups instead of failing the request. `CACHE_TYPE=none` disables caching entirely and the
-service still behaves correctly. Redis health is excluded from the actuator health group.
+The ledger constraint is per wallet rather than global because a transfer writes two rows
+under one key — see Auditability. So the same key on two *different* wallets is accepted; it is
+one request per wallet that is guaranteed.
 
 ### Concurrency
 
 `Wallet` carries a JPA `@Version`. Concurrent updates to the same wallet lose the
 optimistic lock and surface as `ObjectOptimisticLockingFailureException`, which
 `GlobalExceptionHandler` turns into `409 Conflict`. There is no pessimistic locking
-anywhere; retrying with the same `Correlation-Id` is what makes that safe.
+anywhere; retrying with the same `Idempotency-Key` is what makes that safe.
 
 ### Auditability
 
 Balances are mutated in place on `Wallet` via `credit`/`debit`, and every movement also
 appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceAfter`,
-`correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
+`idempotencyKey` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
 `TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone. That is
-why `correlation_id` alone is not unique on the ledger; the constraint is
-`(wallet_id, correlation_id)`, which still holds one row per wallet per request.
+why `idempotency_key` alone is not unique on the ledger; the constraint is
+`(wallet_id, idempotency_key)`, which still holds one row per wallet per request.
 
 ### Correlation id
 
-`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and carries the `Correlation-Id` header into
-the MDC under `correlationId`, clearing it in a `finally`. Nothing is generated when the header is
-absent, since every endpoint requires it. ECS console logging renders MDC entries as top-level
-fields, so every application log line of a request is filterable by that id. Request and response
-payloads are deliberately never logged.
+`X-Correlation-ID` is a separate header from `Idempotency-Key`: optional, free-form `String`, and
+it never reaches a service — tracing only. `RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and
+carries **both** headers into the MDC, under `correlationId` and `idempotencyKey`, clearing them in
+a `finally`. Neither is generated when absent, so those requests simply log without the field —
+which for `idempotencyKey` only happens on a request the controller is about to reject with `400`.
+ECS console logging renders MDC entries as top-level fields, so every application log line of a
+request is filterable by either id. Request and response payloads are deliberately never logged.
 
 ### Errors
 
@@ -145,11 +126,10 @@ off, so lazy associations only resolve inside the service transaction.
 
 ## Tests
 
-`AppTests` is the shared base: `@SpringBootTest` + `MockMvc`, `test` profile, a static
-Redis container wired by `@ServiceConnection`, a `flushAll` before each test, and a
-`balanceOf(walletId)` helper. Integration classes extend it, so each test starts from a
-known database and an empty cache — that reset is what lets tests reuse fixed UUIDs and
-correlation ids.
+`AppTests` is the shared base: `@SpringBootTest` + `MockMvc`, `test` profile, and a
+`balanceOf(walletId)` helper. Integration classes extend it and each runs
+`/mock/sql/clear-tables.sql` before every test, so each test starts from a known database —
+that reset is what lets tests reuse fixed UUIDs and correlation ids.
 
 `JsonUtils.loadJson` reads from the filesystem path `src/test/resources/mock/`, not the
 classpath, so the suite only passes when run from the project root.

@@ -2,6 +2,6 @@
   "type": "about:blank",
   "title": "Business violation",
   "status": 409,
-  "detail": "Correlation-Id already used with different parameters",
+  "detail": "Conflict detected, please try again",
   "instance": "/v1/wallets/6163fb26-3a06-4080-a987-35c5e5a17297/deposits"
 }

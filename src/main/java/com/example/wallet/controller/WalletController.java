@@ -1,6 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
 import static org.springframework.http.HttpStatus.CREATED;
 
 import com.example.wallet.dto.CreateWalletRequest;
@@ -27,9 +27,9 @@ public class WalletController {
 
   @PostMapping
   public ResponseEntity<WalletResponse> createWallet(
-      @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
+      @RequestHeader(IDEMPOTENCY_KEY_HEADER) UUID idempotencyKey,
       @Valid @RequestBody CreateWalletRequest request) {
-    var response = walletService.createWallet(request.userId(), correlationId);
+    var response = walletService.createWallet(request.userId(), idempotencyKey);
     return ResponseEntity.status(CREATED).body(response);
   }
 }

@@ -2,8 +2,6 @@ package com.example.wallet.service;
 
 import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
 import static com.example.wallet.constants.Messages.SAME_WALLET_TRANSFER;
-import static com.example.wallet.dto.TransactionOutcome.APPLIED;
-import static com.example.wallet.dto.TransactionOutcome.REPLAYED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,7 +13,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
-import com.example.wallet.entity.IdempotencyEntry;
 import com.example.wallet.entity.Wallet;
 import com.example.wallet.entity.WalletTransaction;
 import com.example.wallet.exception.ServiceException;
@@ -41,22 +38,20 @@ class TransactionServiceTest {
   private static final UUID PEER_WALLET_ID =
       UUID.fromString("9f4e6a02-7c13-4b8d-a5e6-31c7b90d4f52");
 
-  private static final UUID CORRELATION_ID =
+  private static final UUID IDEMPOTENCY_KEY =
       UUID.fromString("4d8b7e15-2a90-4c63-8f21-7b0e5c9a3d16");
 
-  private static final UUID WALLET_CORRELATION_ID =
+  private static final UUID WALLET_IDEMPOTENCY_KEY =
       UUID.fromString("6a3c9f28-5d14-4e70-9b85-2f6d1a0c7e43");
 
   @Mock private WalletRepository walletRepository;
 
   @Mock private WalletTransactionRepository walletTransactionRepository;
 
-  @Mock private IdempotencyService idempotencyService;
-
   @InjectMocks private TransactionService transactionService;
 
   private static Wallet walletWith(String balance) {
-    var wallet = Wallet.of(USER_ID, WALLET_CORRELATION_ID);
+    var wallet = Wallet.of(USER_ID, WALLET_IDEMPOTENCY_KEY);
     wallet.credit(new BigDecimal(balance));
     return wallet;
   }
@@ -71,27 +66,12 @@ class TransactionServiceTest {
       var wallet = walletWith("100.00");
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
-      assertThat(transactionService.deposit(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(APPLIED);
+      transactionService.deposit(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(wallet.getBalance()).isEqualByComparingTo("175.00");
-      verify(idempotencyService).isReplay(any(IdempotencyEntry.class));
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository).save(wallet);
-      verify(walletTransactionRepository).save(any(WalletTransaction.class));
-      verify(idempotencyService).save(any(IdempotencyEntry.class));
-    }
-
-    @Test
-    @DisplayName("Deve manter o saldo quando o depósito é um replay")
-    void shouldKeepBalanceWhenDepositIsReplay() {
-      when(idempotencyService.isReplay(any(IdempotencyEntry.class))).thenReturn(true);
-
-      assertThat(transactionService.deposit(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(REPLAYED);
-
-      verifyNoInteractions(walletRepository, walletTransactionRepository);
-      verify(idempotencyService, never()).save(any(IdempotencyEntry.class));
+      verify(walletTransactionRepository).saveAndFlush(any(WalletTransaction.class));
     }
   }
 
@@ -105,15 +85,12 @@ class TransactionServiceTest {
       var wallet = walletWith("100.00");
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
-      assertThat(transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(APPLIED);
+      transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(wallet.getBalance()).isEqualByComparingTo("25.00");
-      verify(idempotencyService).isReplay(any(IdempotencyEntry.class));
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository).save(wallet);
-      verify(walletTransactionRepository).save(any(WalletTransaction.class));
-      verify(idempotencyService).save(any(IdempotencyEntry.class));
+      verify(walletTransactionRepository).saveAndFlush(any(WalletTransaction.class));
     }
 
     @Test
@@ -123,7 +100,8 @@ class TransactionServiceTest {
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
       assertThatThrownBy(
-              () -> transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+              () ->
+                  transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(UNPROCESSABLE_ENTITY))
@@ -133,19 +111,6 @@ class TransactionServiceTest {
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository, never()).save(any(Wallet.class));
       verifyNoInteractions(walletTransactionRepository);
-      verify(idempotencyService, never()).save(any(IdempotencyEntry.class));
-    }
-
-    @Test
-    @DisplayName("Deve manter o saldo quando o saque é um replay")
-    void shouldKeepBalanceWhenWithdrawalIsReplay() {
-      when(idempotencyService.isReplay(any(IdempotencyEntry.class))).thenReturn(true);
-
-      assertThat(transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(REPLAYED);
-
-      verifyNoInteractions(walletRepository, walletTransactionRepository);
-      verify(idempotencyService, never()).save(any(IdempotencyEntry.class));
     }
   }
 
@@ -161,20 +126,16 @@ class TransactionServiceTest {
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(fromWallet);
       when(walletRepository.findWallet(PEER_WALLET_ID)).thenReturn(toWallet);
 
-      assertThat(
-              transactionService.transfer(
-                  WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(APPLIED);
+      transactionService.transfer(
+          WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(fromWallet.getBalance()).isEqualByComparingTo("25.00");
       assertThat(toWallet.getBalance()).isEqualByComparingTo("75.00");
-      verify(idempotencyService).isReplay(any(IdempotencyEntry.class));
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository).findWallet(PEER_WALLET_ID);
       verify(walletRepository).save(fromWallet);
       verify(walletRepository).save(toWallet);
-      verify(walletTransactionRepository, times(2)).save(any(WalletTransaction.class));
-      verify(idempotencyService).save(any(IdempotencyEntry.class));
+      verify(walletTransactionRepository, times(2)).saveAndFlush(any(WalletTransaction.class));
     }
 
     @Test
@@ -183,13 +144,13 @@ class TransactionServiceTest {
       assertThatThrownBy(
               () ->
                   transactionService.transfer(
-                      WALLET_ID, WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+                      WALLET_ID, WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(BAD_REQUEST))
           .hasMessage(SAME_WALLET_TRANSFER);
 
-      verifyNoInteractions(idempotencyService, walletRepository, walletTransactionRepository);
+      verifyNoInteractions(walletRepository, walletTransactionRepository);
     }
 
     @Test
@@ -203,7 +164,7 @@ class TransactionServiceTest {
       assertThatThrownBy(
               () ->
                   transactionService.transfer(
-                      WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+                      WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(UNPROCESSABLE_ENTITY))
@@ -215,21 +176,6 @@ class TransactionServiceTest {
       verify(walletRepository).findWallet(PEER_WALLET_ID);
       verify(walletRepository, never()).save(any(Wallet.class));
       verifyNoInteractions(walletTransactionRepository);
-      verify(idempotencyService, never()).save(any(IdempotencyEntry.class));
-    }
-
-    @Test
-    @DisplayName("Deve manter os saldos quando a transferência é um replay")
-    void shouldKeepBalancesWhenTransferIsReplay() {
-      when(idempotencyService.isReplay(any(IdempotencyEntry.class))).thenReturn(true);
-
-      assertThat(
-              transactionService.transfer(
-                  WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
-          .isEqualTo(REPLAYED);
-
-      verifyNoInteractions(walletRepository, walletTransactionRepository);
-      verify(idempotencyService, never()).save(any(IdempotencyEntry.class));
     }
   }
 }

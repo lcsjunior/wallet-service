@@ -2,6 +2,6 @@
   "type": "about:blank",
   "title": "Business violation",
   "status": 409,
-  "detail": "Correlation-Id already used with different parameters",
+  "detail": "Conflict detected, please try again",
   "instance": "/v1/transfers"
 }
