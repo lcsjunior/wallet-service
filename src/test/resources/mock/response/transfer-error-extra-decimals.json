@@ -1,0 +1,10 @@
+{
+  "type": "about:blank",
+  "title": "Validation error",
+  "status": 400,
+  "detail": "One or more fields are invalid",
+  "instance": "/v1/transfers",
+  "errors": [
+    { "field": "amount", "message": "Amount must have at most 2 decimal places" }
+  ]
+}

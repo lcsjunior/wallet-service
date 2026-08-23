@@ -50,37 +50,13 @@ class WalletControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 409 e não duplicar a carteira quando o Idempotency-Key é repetido")
-  void shouldRejectWhenIdempotencyKeyIsRepeated() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/wallets")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
-                .contentType(APPLICATION_JSON)
-                .content(createWalletJson(USER_ID)))
-        .andExpect(status().isCreated());
-
-    mockMvc
-        .perform(
-            post("/v1/wallets")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
-                .contentType(APPLICATION_JSON)
-                .content(createWalletJson(USER_ID)))
-        .andExpect(status().isConflict())
-        .andExpect(
-            content().json(loadJson("response/wallet/error-idempotency-conflict.json"), STRICT));
-
-    assertThat(walletRepository.count()).isEqualTo(1);
-  }
-
-  @Test
   @DisplayName(
       "Deve retornar 201 e outra carteira quando o mesmo usuário usa outro Idempotency-Key")
   void shouldCreateSecondWalletWhenIdempotencyKeyDiffers() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
@@ -88,7 +64,7 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
                 .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
@@ -102,11 +78,11 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(emptyJson()))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/wallet/error-missing-userid.json"), STRICT));
+        .andExpect(content().json(loadJson("response/wallet-error-missing-userid.json"), STRICT));
   }
 
   @Test
@@ -117,6 +93,30 @@ class WalletControllerIntegrationTest extends AppTests {
             post("/v1/wallets").contentType(APPLICATION_JSON).content(createWalletJson(USER_ID)))
         .andExpect(status().isBadRequest())
         .andExpect(
-            content().json(loadJson("response/wallet/error-missing-idempotency-key.json"), STRICT));
+            content().json(loadJson("response/wallet-error-missing-idempotency-key.json"), STRICT));
+  }
+
+  @Test
+  @DisplayName("Deve retornar 409 e não duplicar a carteira quando o Idempotency-Key é repetido")
+  void shouldRejectWhenIdempotencyKeyIsRepeated() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .contentType(APPLICATION_JSON)
+                .content(createWalletJson(USER_ID)))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .contentType(APPLICATION_JSON)
+                .content(createWalletJson(USER_ID)))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().json(loadJson("response/wallet-error-idempotency-conflict.json"), STRICT));
+
+    assertThat(walletRepository.count()).isEqualTo(1);
   }
 }

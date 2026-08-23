@@ -1,5 +1,6 @@
 package com.example.wallet.exception;
 
+import static com.example.wallet.constants.Messages.CONCURRENT_UPDATE;
 import static com.example.wallet.constants.Messages.ENTITY_CONFLICT;
 import static com.example.wallet.constants.Messages.MISSING_REQUIRED_HEADER;
 import static com.example.wallet.constants.Messages.VALIDATION_ERROR;
@@ -44,7 +45,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ResponseEntity<ProblemDetail> handleOptimisticLock() {
     var problemDetail = ProblemDetail.forStatus(CONFLICT);
     problemDetail.setTitle(BUSINESS_ERROR_TITLE);
-    problemDetail.setDetail(ENTITY_CONFLICT);
+    problemDetail.setDetail(CONCURRENT_UPDATE);
     return ResponseEntity.status(CONFLICT).body(problemDetail);
   }
 
