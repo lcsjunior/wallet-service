@@ -1,0 +1,32 @@
+name: SAST
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          queries: security-extended
+      - name: Build
+        run: ./mvnw --batch-mode --show-version -DskipTests package
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
