@@ -8,8 +8,10 @@ on:
 
 jobs:
   code-quality:
-    name: Code Quality
+    name: SonarCloud Analysis
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
