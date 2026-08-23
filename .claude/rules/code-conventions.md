@@ -47,7 +47,7 @@ changing or removing any rule, and state what the code does today that motivates
 - Integration tests run against a real Redis and an in-memory database, both reset before every test
 - Test methods `should<Outcome>When<Condition>`, `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
 - Assert whole bodies with `.content().json(expected, STRICT)`
-- JSON payloads live under `mock/` as `{request,response}/<controller>/<payload-type>-<scenario>.json`; single-field and empty bodies come from `JsonUtils`
+- JSON payloads live under `mock/` as `{request,response}/<controller>/<payload-type>-<scenario>.json`
 - A request `<scenario>` names what the payload contains; the outcome belongs in the test name
 - One seed `.sql` per test class in `mock/sql/`, holding only its `INSERT`s; every `@Sql` runs `/mock/sql/clear-tables.sql` first
 - Seeded UUIDs never repeat across files; `user_id` is the same everywhere

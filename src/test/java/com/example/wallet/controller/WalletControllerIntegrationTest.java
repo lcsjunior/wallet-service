@@ -2,7 +2,6 @@ package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.testutils.JsonUtils.emptyJson;
-import static com.example.wallet.testutils.JsonUtils.fieldJson;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -24,6 +23,12 @@ class WalletControllerIntegrationTest extends AppTests {
 
   private static final String USER_ID = "c528eb21-fd43-46ac-29ba-17d85f394ec1";
 
+  private static String createWalletJson(String userId) {
+    return """
+        {"userId": "%s"}"""
+        .formatted(userId);
+  }
+
   @Test
   @DisplayName("Deve retornar 201 e criar a carteira com saldo zero quando o userId é válido")
   void shouldCreateWalletWhenUserIdIsValid() throws Exception {
@@ -33,7 +38,7 @@ class WalletControllerIntegrationTest extends AppTests {
                 post("/v1/wallets")
                     .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                     .contentType(APPLICATION_JSON)
-                    .content(fieldJson("userId", USER_ID)))
+                    .content(createWalletJson(USER_ID)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.walletId").isNotEmpty())
             .andExpect(jsonPath("$.createdAt").isNotEmpty())
@@ -52,7 +57,7 @@ class WalletControllerIntegrationTest extends AppTests {
             post("/v1/wallets")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("userId", USER_ID)))
+                .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
 
     mockMvc
@@ -60,7 +65,7 @@ class WalletControllerIntegrationTest extends AppTests {
             post("/v1/wallets")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("userId", USER_ID)))
+                .content(createWalletJson(USER_ID)))
         .andExpect(status().isConflict())
         .andExpect(
             content().json(loadJson("response/wallet/error-correlation-conflict.json"), STRICT));
@@ -76,7 +81,7 @@ class WalletControllerIntegrationTest extends AppTests {
             post("/v1/wallets")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("userId", USER_ID)))
+                .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
 
     mockMvc
@@ -84,7 +89,7 @@ class WalletControllerIntegrationTest extends AppTests {
             post("/v1/wallets")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("userId", USER_ID)))
+                .content(createWalletJson(USER_ID)))
         .andExpect(status().isCreated());
 
     assertThat(walletRepository.count()).isEqualTo(2);
@@ -108,7 +113,7 @@ class WalletControllerIntegrationTest extends AppTests {
   void shouldRejectWhenCorrelationIdIsMissing() throws Exception {
     mockMvc
         .perform(
-            post("/v1/wallets").contentType(APPLICATION_JSON).content(fieldJson("userId", USER_ID)))
+            post("/v1/wallets").contentType(APPLICATION_JSON).content(createWalletJson(USER_ID)))
         .andExpect(status().isBadRequest())
         .andExpect(
             content().json(loadJson("response/wallet/error-missing-correlation-id.json"), STRICT));

@@ -2,7 +2,6 @@ package com.example.wallet.controller;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
-import static com.example.wallet.testutils.JsonUtils.fieldJson;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -26,6 +25,12 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   private static final String WALLET_ID = "35a907a7-9217-4e12-b1f2-5d80f579f9b0";
   private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
+  private static String withdrawalJson(String amount) {
+    return """
+        {"amount": "%s"}"""
+        .formatted(amount);
+  }
+
   @Test
   @DisplayName("Deve retornar 204 e debitar o saldo quando o valor é válido")
   void shouldDebitBalanceWhenAmountIsValid() throws Exception {
@@ -34,7 +39,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "30.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
@@ -49,7 +54,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "1000.00")))
+                .content(withdrawalJson("1000.00")))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().json(loadJson("response/withdrawal/error-insufficient.json"), STRICT));
 
@@ -64,7 +69,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "0")))
+                .content(withdrawalJson("0")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/withdrawal/error-non-positive.json"), STRICT));
 
@@ -79,7 +84,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "30.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/withdrawal/error-wallet-not-found.json"), STRICT));
@@ -95,7 +100,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "30.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
@@ -104,7 +109,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "30.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
 
@@ -119,7 +124,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "30.00")))
+                .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent());
 
     mockMvc
@@ -127,7 +132,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
-                .content(fieldJson("amount", "40.00")))
+                .content(withdrawalJson("40.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content()

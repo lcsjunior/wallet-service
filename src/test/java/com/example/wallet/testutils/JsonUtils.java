@@ -22,8 +22,4 @@ public final class JsonUtils {
   public static String emptyJson() {
     return "{}";
   }
-
-  public static String fieldJson(String field, String value) {
-    return "{\"" + field + "\":\"" + value + "\"}";
-  }
 }
