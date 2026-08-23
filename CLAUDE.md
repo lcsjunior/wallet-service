@@ -30,12 +30,15 @@ formats staged files — enable it once per clone with
 ## Architecture
 
 Layering is `controller → service → repository`, with MapStruct between entity and DTO.
-Four controllers under `/v1`, two services, three repositories.
+Four controllers under `/v1`, three services, three repositories.
 
 - `WalletService` — wallet creation. The only user of `WalletMapper`.
 - `TransactionService` — all money movement (`deposit`, `withdraw`, `transfer`). Each
   method is one `@Transactional` unit touching wallets, the ledger and the idempotency
   table together.
+- `IdempotencyService` — replay detection and entry persistence. The only user of
+  `IdempotencyRepository`; it declares no transaction of its own and runs inside the
+  caller's.
 
 `TransferController` sits at `/v1/transfers` rather than under a wallet, because a
 transfer belongs to two wallets; deposits and withdrawals nest under
@@ -49,7 +52,7 @@ instead of returning `Optional` — callers never handle absence themselves.
 Every endpoint requires a `Correlation-Id` header, but only the three money movements key
 idempotency off it — wallet creation merely carries it into the logs. `IdempotencyEntry.of` derives a
 *fingerprint* — `operationType:key:amount`, where `key` is the wallet id, or
-`from->to` for transfers. `TransactionService.isReplay` then:
+`from->to` for transfers. `IdempotencyService.isReplay` then:
 
 1. looks the correlation id up in `IdempotencyRepository`;
 2. absent → proceeds, and persists the entry at the end of the method;
