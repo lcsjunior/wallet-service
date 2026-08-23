@@ -53,7 +53,7 @@ class DepositControllerIntegrationTest extends AppTests {
                 .contentType(APPLICATION_JSON)
                 .content(depositJson("-10.00")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/deposit/error-non-positive.json"), STRICT));
+        .andExpect(content().json(loadJson("response/deposit-error-non-positive.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("0.00");
   }
@@ -68,7 +68,7 @@ class DepositControllerIntegrationTest extends AppTests {
                 .contentType(APPLICATION_JSON)
                 .content(depositJson("0.015")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/deposit/error-extra-decimals.json"), STRICT));
+        .andExpect(content().json(loadJson("response/deposit-error-extra-decimals.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("0.00");
   }
@@ -84,7 +84,7 @@ class DepositControllerIntegrationTest extends AppTests {
                 .content(depositJson("100.00")))
         .andExpect(status().isNotFound())
         .andExpect(
-            content().json(loadJson("response/deposit/error-wallet-not-found.json"), STRICT));
+            content().json(loadJson("response/deposit-error-wallet-not-found.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("0.00");
   }
@@ -108,7 +108,7 @@ class DepositControllerIntegrationTest extends AppTests {
                 .content(depositJson("100.00")))
         .andExpect(status().isConflict())
         .andExpect(
-            content().json(loadJson("response/deposit/error-idempotency-conflict.json"), STRICT));
+            content().json(loadJson("response/deposit-error-idempotency-conflict.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }

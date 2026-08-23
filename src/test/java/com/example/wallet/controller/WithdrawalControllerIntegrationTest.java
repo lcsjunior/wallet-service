@@ -44,31 +44,47 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 422 quando o saldo é insuficiente")
-  void shouldRejectWhenBalanceIsInsufficient() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("1000.00")))
-        .andExpect(status().isUnprocessableEntity())
-        .andExpect(content().json(loadJson("response/withdrawal/error-insufficient.json"), STRICT));
-
-    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
-  }
-
-  @Test
   @DisplayName("Deve retornar 400 quando o valor é zero ou negativo")
   void shouldRejectWhenAmountIsNotPositive() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("0")))
         .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/withdrawal/error-non-positive.json"), STRICT));
+        .andExpect(content().json(loadJson("response/withdrawal-error-non-positive.json"), STRICT));
+
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 400 quando o valor tem mais de duas casas decimais")
+  void shouldRejectWhenAmountHasExtraDecimals() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
+                .contentType(APPLICATION_JSON)
+                .content(withdrawalJson("0.015")))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            content().json(loadJson("response/withdrawal-error-extra-decimals.json"), STRICT));
+
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 422 quando o saldo é insuficiente")
+  void shouldRejectWhenBalanceIsInsufficient() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
+                .contentType(APPLICATION_JSON)
+                .content(withdrawalJson("1000.00")))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(content().json(loadJson("response/withdrawal-error-insufficient.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
@@ -79,12 +95,12 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNotFound())
         .andExpect(
-            content().json(loadJson("response/withdrawal/error-wallet-not-found.json"), STRICT));
+            content().json(loadJson("response/withdrawal-error-wallet-not-found.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
@@ -95,7 +111,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent());
@@ -103,13 +119,13 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content()
-                .json(loadJson("response/withdrawal/error-idempotency-conflict.json"), STRICT));
+                .json(loadJson("response/withdrawal-error-idempotency-conflict.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }

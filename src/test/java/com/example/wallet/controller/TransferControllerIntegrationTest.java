@@ -46,16 +46,63 @@ class TransferControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 422 quando o saldo da origem é insuficiente")
-  void shouldRejectWhenBalanceIsInsufficient() throws Exception {
+  @DisplayName("Deve retornar 400 quando o valor é zero ou negativo")
+  void shouldRejectWhenAmountIsNotPositive() throws Exception {
     mockMvc
         .perform(
             post("/v1/transfers")
                 .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "-5.00")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json(loadJson("response/transfer-error-non-positive.json"), STRICT));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 400 quando o valor tem mais de duas casas decimais")
+  void shouldRejectWhenAmountHasExtraDecimals() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
+                .contentType(APPLICATION_JSON)
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "0.015")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json(loadJson("response/transfer-error-extra-decimals.json"), STRICT));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 400 quando origem e destino são a mesma carteira")
+  void shouldRejectWhenWalletsAreTheSame() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
+                .contentType(APPLICATION_JSON)
+                .content(transferJson(FROM_WALLET_ID, FROM_WALLET_ID, "10.00")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json(loadJson("response/transfer-error-same-wallet.json"), STRICT));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 422 quando o saldo da origem é insuficiente")
+  void shouldRejectWhenBalanceIsInsufficient() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
+                .contentType(APPLICATION_JSON)
                 .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "1000.00")))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(content().json(loadJson("response/transfer/error-insufficient.json"), STRICT));
+        .andExpect(content().json(loadJson("response/transfer-error-insufficient.json"), STRICT));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
@@ -67,12 +114,12 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(transferJson(MISSING_WALLET_ID, TO_WALLET_ID, "10.00")))
         .andExpect(status().isNotFound())
         .andExpect(
-            content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
+            content().json(loadJson("response/transfer-error-wallet-not-found.json"), STRICT));
 
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
   }
@@ -83,45 +130,14 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
                 .content(transferJson(FROM_WALLET_ID, MISSING_WALLET_ID, "10.00")))
         .andExpect(status().isNotFound())
         .andExpect(
-            content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
+            content().json(loadJson("response/transfer-error-wallet-not-found.json"), STRICT));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
-  }
-
-  @Test
-  @DisplayName("Deve retornar 400 quando origem e destino são a mesma carteira")
-  void shouldRejectWhenWalletsAreTheSame() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, FROM_WALLET_ID, "10.00")))
-        .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/transfer/error-same-wallet.json"), STRICT));
-
-    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
-  }
-
-  @Test
-  @DisplayName("Deve retornar 400 quando o valor é zero ou negativo")
-  void shouldRejectWhenAmountIsNotPositive() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "-5.00")))
-        .andExpect(status().isBadRequest())
-        .andExpect(content().json(loadJson("response/transfer/error-non-positive.json"), STRICT));
-
-    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("100.00");
-    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("0.00");
   }
 
   @Test
@@ -130,7 +146,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000008")
                 .contentType(APPLICATION_JSON)
                 .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
         .andExpect(status().isNoContent());
@@ -138,12 +154,12 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000008")
                 .contentType(APPLICATION_JSON)
                 .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
         .andExpect(status().isConflict())
         .andExpect(
-            content().json(loadJson("response/transfer/error-idempotency-conflict.json"), STRICT));
+            content().json(loadJson("response/transfer-error-idempotency-conflict.json"), STRICT));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("75.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("25.00");
