@@ -45,14 +45,14 @@ instead of returning `Optional` — callers never handle absence themselves.
 
 ### Idempotency
 
-Every endpoint requires a `Correlation-Id` header, and no mutation can be applied twice under
-the same one. There is one mechanism for all four: a unique constraint, and no read before the
-insert. The database is the only thing deciding, which is also what covers two concurrent
-requests carrying the same id.
+Every endpoint requires an `Idempotency-Key` header — a UUID — and no mutation can be applied
+twice under the same one. There is one mechanism for all four: a unique constraint, and no read
+before the insert. The database is the only thing deciding, which is also what covers two
+concurrent requests carrying the same key.
 
-- creation — `Wallet.correlationId` is `unique`; `WalletService.createWallet` calls
+- creation — `Wallet.idempotencyKey` is `unique`; `WalletService.createWallet` calls
   `saveAndFlush` and a repeat loses the constraint;
-- movements — `uk_wallet_transaction_wallet_correlation` on `(wallet_id, correlation_id)`;
+- movements — `uk_wallet_transaction_wallet_idempotency_key` on `(wallet_id, idempotency_key)`;
   each ledger insert is a `saveAndFlush`, so a repeat loses the constraint before the method
   returns and the balance change rolls back with it.
 
@@ -66,32 +66,34 @@ domain rules run first, so a retried movement whose balance no longer covers it 
 before the constraint is ever reached.
 
 The ledger constraint is per wallet rather than global because a transfer writes two rows
-under one correlation id — see Auditability. So the same correlation id on two *different*
-wallets is accepted; it is one request per wallet that is guaranteed.
+under one key — see Auditability. So the same key on two *different* wallets is accepted; it is
+one request per wallet that is guaranteed.
 
 ### Concurrency
 
 `Wallet` carries a JPA `@Version`. Concurrent updates to the same wallet lose the
 optimistic lock and surface as `ObjectOptimisticLockingFailureException`, which
 `GlobalExceptionHandler` turns into `409 Conflict`. There is no pessimistic locking
-anywhere; retrying with the same `Correlation-Id` is what makes that safe.
+anywhere; retrying with the same `Idempotency-Key` is what makes that safe.
 
 ### Auditability
 
 Balances are mutated in place on `Wallet` via `credit`/`debit`, and every movement also
 appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceAfter`,
-`correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
+`idempotencyKey` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
 `TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone. That is
-why `correlation_id` alone is not unique on the ledger; the constraint is
-`(wallet_id, correlation_id)`, which still holds one row per wallet per request.
+why `idempotency_key` alone is not unique on the ledger; the constraint is
+`(wallet_id, idempotency_key)`, which still holds one row per wallet per request.
 
 ### Correlation id
 
-`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and carries the `Correlation-Id` header into
-the MDC under `correlationId`, clearing it in a `finally`. Nothing is generated when the header is
-absent, since every endpoint requires it. ECS console logging renders MDC entries as top-level
-fields, so every application log line of a request is filterable by that id. Request and response
-payloads are deliberately never logged.
+`X-Correlation-ID` is a separate header from `Idempotency-Key`: optional, free-form `String`, and
+it never reaches a service — tracing only. `RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and
+carries **both** headers into the MDC, under `correlationId` and `idempotencyKey`, clearing them in
+a `finally`. Neither is generated when absent, so those requests simply log without the field —
+which for `idempotencyKey` only happens on a request the controller is about to reject with `400`.
+ECS console logging renders MDC entries as top-level fields, so every application log line of a
+request is filterable by either id. Request and response payloads are deliberately never logged.
 
 ### Errors
 

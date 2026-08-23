@@ -25,7 +25,7 @@ class WalletServiceTest {
 
   private static final UUID WALLET_ID = UUID.fromString("2c9a1d4b-8e57-4f10-9b3a-5d61e0f27c48");
 
-  private static final UUID CORRELATION_ID =
+  private static final UUID IDEMPOTENCY_KEY =
       UUID.fromString("3d7f5b62-91ae-4c08-8e23-7b4a0c6d5f19");
 
   @Mock private WalletRepository walletRepository;
@@ -40,7 +40,7 @@ class WalletServiceTest {
     var walletResponse = new WalletResponse(WALLET_ID, Instant.EPOCH);
     when(walletMapper.toWalletResponse(any(Wallet.class))).thenReturn(walletResponse);
 
-    assertThat(walletService.createWallet(USER_ID, CORRELATION_ID)).isEqualTo(walletResponse);
+    assertThat(walletService.createWallet(USER_ID, IDEMPOTENCY_KEY)).isEqualTo(walletResponse);
 
     verify(walletRepository).saveAndFlush(any(Wallet.class));
   }

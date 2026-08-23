@@ -29,7 +29,7 @@ public class TransactionService {
   }
 
   @Transactional
-  public void deposit(UUID walletId, BigDecimal amount, UUID correlationId) {
+  public void deposit(UUID walletId, BigDecimal amount, UUID idempotencyKey) {
     var wallet = walletRepository.findWallet(walletId);
     wallet.credit(amount);
     walletRepository.save(wallet);
@@ -40,12 +40,12 @@ public class TransactionService {
             .type(DEPOSIT)
             .amount(amount)
             .balanceAfter(wallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .build());
   }
 
   @Transactional
-  public void withdraw(UUID walletId, BigDecimal amount, UUID correlationId) {
+  public void withdraw(UUID walletId, BigDecimal amount, UUID idempotencyKey) {
     var wallet = walletRepository.findWallet(walletId);
     wallet.debit(amount);
     walletRepository.save(wallet);
@@ -56,12 +56,12 @@ public class TransactionService {
             .type(WITHDRAWAL)
             .amount(amount)
             .balanceAfter(wallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .build());
   }
 
   @Transactional
-  public void transfer(UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID correlationId) {
+  public void transfer(UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID idempotencyKey) {
     validateSelfTransfer(fromWalletId, toWalletId);
 
     var fromWallet = walletRepository.findWallet(fromWalletId);
@@ -77,7 +77,7 @@ public class TransactionService {
             .type(TRANSFER_DEBIT)
             .amount(amount)
             .balanceAfter(fromWallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .peerWalletId(toWallet.getId())
             .build());
     walletTransactionRepository.saveAndFlush(
@@ -86,7 +86,7 @@ public class TransactionService {
             .type(TRANSFER_CREDIT)
             .amount(amount)
             .balanceAfter(toWallet.getBalance())
-            .correlationId(correlationId)
+            .idempotencyKey(idempotencyKey)
             .peerWalletId(fromWallet.getId())
             .build());
   }

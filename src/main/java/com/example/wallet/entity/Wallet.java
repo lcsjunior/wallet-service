@@ -29,8 +29,8 @@ public class Wallet {
   @Column(name = "user_id", nullable = false, updatable = false)
   private UUID userId;
 
-  @Column(name = "correlation_id", nullable = false, unique = true, updatable = false)
-  private UUID correlationId;
+  @Column(name = "idempotency_key", nullable = false, unique = true, updatable = false)
+  private UUID idempotencyKey;
 
   @Column(name = "balance", nullable = false, precision = 19, scale = 2)
   private BigDecimal balance = ZERO_MONEY;
@@ -49,13 +49,13 @@ public class Wallet {
 
   protected Wallet() {}
 
-  private Wallet(UUID userId, UUID correlationId) {
+  private Wallet(UUID userId, UUID idempotencyKey) {
     this.userId = userId;
-    this.correlationId = correlationId;
+    this.idempotencyKey = idempotencyKey;
   }
 
-  public static Wallet of(UUID userId, UUID correlationId) {
-    return new Wallet(userId, correlationId);
+  public static Wallet of(UUID userId, UUID idempotencyKey) {
+    return new Wallet(userId, idempotencyKey);
   }
 
   public void credit(BigDecimal amount) {

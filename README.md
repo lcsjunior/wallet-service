@@ -13,10 +13,10 @@ single node.
 
 ## Features
 
-- Wallets — a user may hold more than one, so a repeated `Correlation-Id` is rejected, never
+- Wallets — a user may hold more than one, so a repeated `Idempotency-Key` is rejected, never
   silently duplicated
 - Deposits, withdrawals, and transfers between two wallets
-- Every mutation is guarded by a `Correlation-Id`: a unique constraint in the database answers
+- Every mutation is guarded by an `Idempotency-Key`: a unique constraint in the database answers
   `409` to a repeat, so nothing is ever applied twice
 - Optimistic locking — concurrent updates to the same wallet fail with `409`
 - Immutable audit ledger, with both legs of a transfer recorded
@@ -58,8 +58,8 @@ Or locally:
 The `dev` profile adds SQL logging and the H2 console at `/h2-console`. The database
 is in-memory: every restart starts empty.
 
-Application logs carry the request's `Correlation-Id` as the MDC field `correlationId`; HTTP
-payloads are never logged.
+Application logs carry the request's `Idempotency-Key` and its optional `X-Correlation-ID` as the
+MDC fields `idempotencyKey` and `correlationId`; HTTP payloads are never logged.
 
 ## API
 
@@ -74,27 +74,29 @@ payloads are never logged.
 # Create a wallet — 201 Created
 curl -X POST http://localhost:8080/v1/wallets \
   -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: 6c1b0a2d-5e4f-4c3b-8a19-7d2e3f4a5b60' \
+  -H 'Idempotency-Key: 6c1b0a2d-5e4f-4c3b-8a19-7d2e3f4a5b60' \
+  -H 'X-Correlation-ID: abc123def456-trace-999' \
   -d '{"userId":"3f2504e0-4f89-11d3-9a0c-0305e82c3301"}'
 # {"walletId":"6163fb26-3a06-4080-a987-35c5e5a17297","createdAt":"..."}
 
 # Deposit — 204 No Content
 curl -i -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
   -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: 8f14e45f-1d6f-4f1a-9a3e-0e1c2f4b5a6d' \
+  -H 'Idempotency-Key: 8f14e45f-1d6f-4f1a-9a3e-0e1c2f4b5a6d' \
   -d '{"amount":"100.00"}'
 
 # Transfer between two wallets — 204 No Content
 curl -i -X POST http://localhost:8080/v1/transfers \
   -H 'Content-Type: application/json' \
-  -H 'Correlation-Id: 2b6b1f0e-7c3a-4b2d-8f5e-1a9c6d4e3f21' \
+  -H 'Idempotency-Key: 2b6b1f0e-7c3a-4b2d-8f5e-1a9c6d4e3f21' \
   -d '{"fromWalletId":"'$FROM'","toWalletId":"'$TO'","amount":"25.00"}'
 ```
 
-Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`, and reusing
-one answers `409` rather than applying the request twice — there is no silent replay. The money
-movements answer `204 No Content` with no body; wallet creation answers `201 Created` with the
-wallet.
+Amounts are JSON strings, never numbers. Every endpoint requires `Idempotency-Key`, a UUID, and
+reusing one answers `409` rather than applying the request twice — there is no silent replay.
+`X-Correlation-ID` is optional and free-form: it never changes the outcome, it only tags the log
+lines of the request. The money movements answer `204 No Content` with no body; wallet creation
+answers `201 Created` with the wallet.
 
 ### Errors
 
@@ -110,9 +112,9 @@ wallet.
 
 | Status | When |
 |---|---|
-| `400 Bad Request` | Invalid payload, missing `Correlation-Id`, transfer to the same wallet |
+| `400 Bad Request` | Invalid payload, missing `Idempotency-Key`, transfer to the same wallet |
 | `404 Not Found` | Wallet does not exist |
-| `409 Conflict` | `Correlation-Id` already used on that wallet, or a concurrent update lost the optimistic lock |
+| `409 Conflict` | `Idempotency-Key` already used on that wallet, or a concurrent update lost the optimistic lock |
 | `422 Unprocessable Entity` | Insufficient balance |
 
 ## Configuration

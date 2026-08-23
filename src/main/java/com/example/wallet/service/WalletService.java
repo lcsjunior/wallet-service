@@ -20,8 +20,8 @@ public class WalletService {
   }
 
   @Transactional
-  public WalletResponse createWallet(UUID userId, UUID correlationId) {
-    var wallet = Wallet.of(userId, correlationId);
+  public WalletResponse createWallet(UUID userId, UUID idempotencyKey) {
+    var wallet = Wallet.of(userId, idempotencyKey);
     walletRepository.saveAndFlush(wallet);
     return walletMapper.toWalletResponse(wallet);
   }

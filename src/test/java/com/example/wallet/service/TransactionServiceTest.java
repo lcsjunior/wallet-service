@@ -38,10 +38,10 @@ class TransactionServiceTest {
   private static final UUID PEER_WALLET_ID =
       UUID.fromString("9f4e6a02-7c13-4b8d-a5e6-31c7b90d4f52");
 
-  private static final UUID CORRELATION_ID =
+  private static final UUID IDEMPOTENCY_KEY =
       UUID.fromString("4d8b7e15-2a90-4c63-8f21-7b0e5c9a3d16");
 
-  private static final UUID WALLET_CORRELATION_ID =
+  private static final UUID WALLET_IDEMPOTENCY_KEY =
       UUID.fromString("6a3c9f28-5d14-4e70-9b85-2f6d1a0c7e43");
 
   @Mock private WalletRepository walletRepository;
@@ -51,7 +51,7 @@ class TransactionServiceTest {
   @InjectMocks private TransactionService transactionService;
 
   private static Wallet walletWith(String balance) {
-    var wallet = Wallet.of(USER_ID, WALLET_CORRELATION_ID);
+    var wallet = Wallet.of(USER_ID, WALLET_IDEMPOTENCY_KEY);
     wallet.credit(new BigDecimal(balance));
     return wallet;
   }
@@ -66,7 +66,7 @@ class TransactionServiceTest {
       var wallet = walletWith("100.00");
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
-      transactionService.deposit(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID);
+      transactionService.deposit(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(wallet.getBalance()).isEqualByComparingTo("175.00");
       verify(walletRepository).findWallet(WALLET_ID);
@@ -85,7 +85,7 @@ class TransactionServiceTest {
       var wallet = walletWith("100.00");
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
-      transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID);
+      transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(wallet.getBalance()).isEqualByComparingTo("25.00");
       verify(walletRepository).findWallet(WALLET_ID);
@@ -100,7 +100,8 @@ class TransactionServiceTest {
       when(walletRepository.findWallet(WALLET_ID)).thenReturn(wallet);
 
       assertThatThrownBy(
-              () -> transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+              () ->
+                  transactionService.withdraw(WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(UNPROCESSABLE_ENTITY))
@@ -126,7 +127,7 @@ class TransactionServiceTest {
       when(walletRepository.findWallet(PEER_WALLET_ID)).thenReturn(toWallet);
 
       transactionService.transfer(
-          WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID);
+          WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY);
 
       assertThat(fromWallet.getBalance()).isEqualByComparingTo("25.00");
       assertThat(toWallet.getBalance()).isEqualByComparingTo("75.00");
@@ -143,7 +144,7 @@ class TransactionServiceTest {
       assertThatThrownBy(
               () ->
                   transactionService.transfer(
-                      WALLET_ID, WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+                      WALLET_ID, WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(BAD_REQUEST))
@@ -163,7 +164,7 @@ class TransactionServiceTest {
       assertThatThrownBy(
               () ->
                   transactionService.transfer(
-                      WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), CORRELATION_ID))
+                      WALLET_ID, PEER_WALLET_ID, new BigDecimal("75.00"), IDEMPOTENCY_KEY))
           .isInstanceOfSatisfying(
               ServiceException.class,
               exception -> assertThat(exception.getHttpStatus()).isEqualTo(UNPROCESSABLE_ENTITY))

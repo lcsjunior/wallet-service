@@ -25,8 +25,8 @@ import org.hibernate.annotations.Immutable;
     name = "wallet_transaction",
     uniqueConstraints =
         @UniqueConstraint(
-            name = "uk_wallet_transaction_wallet_correlation",
-            columnNames = {"wallet_id", "correlation_id"}))
+            name = "uk_wallet_transaction_wallet_idempotency_key",
+            columnNames = {"wallet_id", "idempotency_key"}))
 public class WalletTransaction {
 
   @Id
@@ -55,8 +55,8 @@ public class WalletTransaction {
   @Column(name = "balance_after", nullable = false, precision = 19, scale = 2)
   private BigDecimal balanceAfter;
 
-  @Column(name = "correlation_id", nullable = false)
-  private UUID correlationId;
+  @Column(name = "idempotency_key", nullable = false)
+  private UUID idempotencyKey;
 
   @Column(name = "peer_wallet_id")
   private UUID peerWalletId;
@@ -80,7 +80,7 @@ public class WalletTransaction {
     this.type = builder.type;
     this.amount = builder.amount;
     this.balanceAfter = builder.balanceAfter;
-    this.correlationId = builder.correlationId;
+    this.idempotencyKey = builder.idempotencyKey;
     this.peerWalletId = builder.peerWalletId;
   }
 
@@ -94,7 +94,7 @@ public class WalletTransaction {
     private TransactionType type;
     private BigDecimal amount;
     private BigDecimal balanceAfter;
-    private UUID correlationId;
+    private UUID idempotencyKey;
     private UUID peerWalletId;
 
     private Builder() {}
@@ -119,8 +119,8 @@ public class WalletTransaction {
       return this;
     }
 
-    public Builder correlationId(UUID correlationId) {
-      this.correlationId = correlationId;
+    public Builder idempotencyKey(UUID idempotencyKey) {
+      this.idempotencyKey = idempotencyKey;
       return this;
     }
 

@@ -1,6 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -35,7 +35,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent());
@@ -49,7 +49,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("1000.00")))
         .andExpect(status().isUnprocessableEntity())
@@ -64,7 +64,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000003")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("0")))
         .andExpect(status().isBadRequest())
@@ -79,7 +79,7 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNotFound())
@@ -90,12 +90,12 @@ class WithdrawalControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName("Deve retornar 409 sem debitar de novo quando o Correlation-Id se repete")
-  void shouldRejectWhenCorrelationIdRepeats() throws Exception {
+  @DisplayName("Deve retornar 409 sem debitar de novo quando o Idempotency-Key se repete")
+  void shouldRejectWhenIdempotencyKeyRepeats() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isNoContent());
@@ -103,13 +103,13 @@ class WithdrawalControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(withdrawalJson("30.00")))
         .andExpect(status().isConflict())
         .andExpect(
             content()
-                .json(loadJson("response/withdrawal/error-correlation-conflict.json"), STRICT));
+                .json(loadJson("response/withdrawal/error-idempotency-conflict.json"), STRICT));
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }

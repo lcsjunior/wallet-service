@@ -2,6 +2,6 @@
   "type": "about:blank",
   "title": "Validation error",
   "status": 400,
-  "detail": "Missing Correlation-Id header",
+  "detail": "Missing Idempotency-Key header",
   "instance": "/v1/wallets"
 }

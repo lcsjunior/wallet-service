@@ -2,6 +2,8 @@ package com.example.wallet.filter;
 
 import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
 import static com.example.wallet.constants.Constants.CORRELATION_ID_MDC_KEY;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
+import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_MDC_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,6 +13,8 @@ import static org.mockito.Mockito.verify;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +28,9 @@ import org.springframework.mock.web.MockHttpServletResponse;
 @ExtendWith(MockitoExtension.class)
 class RequestLoggingFilterTest {
 
-  private static final String CORRELATION_ID = "3f1c9c1e-0d3a-4a6f-9a4a-1c2c9c0f5b21";
+  private static final String CORRELATION_ID = "abc123def456-trace-999";
+
+  private static final String IDEMPOTENCY_KEY = "123e4567-e89b-12d3-a456-426614174000";
 
   private static final String REQUEST_URI = "/v1/wallets";
 
@@ -32,25 +38,42 @@ class RequestLoggingFilterTest {
 
   private final RequestLoggingFilter filter = new RequestLoggingFilter();
 
-  private final AtomicReference<String> mdcDuringChain = new AtomicReference<>();
+  private final AtomicReference<Map<String, String>> mdcDuringChain = new AtomicReference<>();
 
   @Test
-  @DisplayName("Deve expor o correlation-id do header no MDC quando o header é informado")
-  void shouldExposeCorrelationIdWhenHeaderIsPresent() throws Exception {
-    var request = new MockHttpServletRequest("POST", REQUEST_URI);
-    request.addHeader(CORRELATION_ID_HEADER, CORRELATION_ID);
+  @DisplayName(
+      "Deve expor o correlation-id e o idempotency-key no MDC quando os headers são informados")
+  void shouldExposeBothIdsWhenHeadersArePresent() throws Exception {
+    var request = requestWithHeaders();
     captureMdcDuringChain();
 
     filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
-    assertThat(mdcDuringChain.get()).isEqualTo(CORRELATION_ID);
+    assertThat(mdcDuringChain.get())
+        .containsEntry(CORRELATION_ID_MDC_KEY, CORRELATION_ID)
+        .containsEntry(IDEMPOTENCY_KEY_MDC_KEY, IDEMPOTENCY_KEY);
     assertThat(MDC.get(CORRELATION_ID_MDC_KEY)).isNull();
+    assertThat(MDC.get(IDEMPOTENCY_KEY_MDC_KEY)).isNull();
     verify(filterChain).doFilter(any(), any());
   }
 
   @Test
-  @DisplayName("Deve deixar o MDC sem correlation-id quando o header não é informado")
-  void shouldLeaveMdcEmptyWhenHeaderIsAbsent() throws Exception {
+  @DisplayName("Deve expor apenas o idempotency-key no MDC quando o correlation-id não é informado")
+  void shouldExposeIdempotencyKeyWhenCorrelationIdIsAbsent() throws Exception {
+    var request = new MockHttpServletRequest("POST", REQUEST_URI);
+    request.addHeader(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY);
+    captureMdcDuringChain();
+
+    filter.doFilter(request, new MockHttpServletResponse(), filterChain);
+
+    assertThat(mdcDuringChain.get())
+        .containsEntry(IDEMPOTENCY_KEY_MDC_KEY, IDEMPOTENCY_KEY)
+        .doesNotContainKey(CORRELATION_ID_MDC_KEY);
+  }
+
+  @Test
+  @DisplayName("Deve deixar o MDC vazio quando nenhum header é informado")
+  void shouldLeaveMdcEmptyWhenHeadersAreAbsent() throws Exception {
     captureMdcDuringChain();
 
     filter.doFilter(
@@ -58,26 +81,35 @@ class RequestLoggingFilterTest {
         new MockHttpServletResponse(),
         filterChain);
 
-    assertThat(mdcDuringChain.get()).isNull();
+    assertThat(mdcDuringChain.get())
+        .doesNotContainKeys(CORRELATION_ID_MDC_KEY, IDEMPOTENCY_KEY_MDC_KEY);
   }
 
   @Test
   @DisplayName("Deve limpar o MDC quando a requisição falha")
   void shouldClearMdcWhenChainThrows() throws Exception {
-    var request = new MockHttpServletRequest("POST", REQUEST_URI);
-    request.addHeader(CORRELATION_ID_HEADER, CORRELATION_ID);
+    var request = requestWithHeaders();
     doThrow(new ServletException()).when(filterChain).doFilter(any(), any());
 
     assertThatThrownBy(() -> filter.doFilter(request, new MockHttpServletResponse(), filterChain))
         .isInstanceOf(ServletException.class);
 
     assertThat(MDC.get(CORRELATION_ID_MDC_KEY)).isNull();
+    assertThat(MDC.get(IDEMPOTENCY_KEY_MDC_KEY)).isNull();
+  }
+
+  private static MockHttpServletRequest requestWithHeaders() {
+    var request = new MockHttpServletRequest("POST", REQUEST_URI);
+    request.addHeader(CORRELATION_ID_HEADER, CORRELATION_ID);
+    request.addHeader(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY);
+    return request;
   }
 
   private void captureMdcDuringChain() throws Exception {
     doAnswer(
             invocation -> {
-              mdcDuringChain.set(MDC.get(CORRELATION_ID_MDC_KEY));
+              var context = MDC.getCopyOfContextMap();
+              mdcDuringChain.set(context == null ? new HashMap<>() : context);
               return null;
             })
         .when(filterChain)
