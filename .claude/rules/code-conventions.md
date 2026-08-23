@@ -35,6 +35,11 @@ changing or removing any rule, and state what the code does today that motivates
 - Profile properties hold only what differs from `application.properties`
 - Cache settings live in properties; Redis timeouts stay at framework defaults
 
+## Logging
+
+- No sensitive data in logs — never log HTTP payloads, headers, credentials or personal data; the `correlationId` in the MDC is what ties a line to its request
+- A class that logs should declare `LOG_PREFIX` with its own name, prepended to the message — a recommendation, not an absolute: skip it where the message already identifies its own origin
+
 ## Testing
 
 - Integration classes are suffixed `IntegrationTest`, unit classes `Test`
@@ -64,4 +69,3 @@ changing or removing any rule, and state what the code does today that motivates
 - `validate*` only when the method has a conditional that rejects; otherwise name it after what it does
 - Static-import constants and enum values, unless two enums share a value's simple name; ordinary static calls stay qualified
 - No comments or Javadoc
-- A class that logs should declare `LOG_PREFIX` with its own name, prepended to the message — a recommendation, not an absolute: skip it where the message already identifies its own origin
