@@ -23,7 +23,6 @@ import org.springframework.test.context.jdbc.Sql;
 class WalletControllerIntegrationTest extends AppTests {
 
   private static final String USER_ID = "c528eb21-fd43-46ac-29ba-17d85f394ec1";
-  private static final String CORRELATION_ID = "00000000-0000-0000-0000-000000000001";
 
   @Test
   @DisplayName("Deve retornar 201 e criar a carteira com saldo zero quando o userId é válido")
@@ -32,7 +31,7 @@ class WalletControllerIntegrationTest extends AppTests {
         mockMvc
             .perform(
                 post("/v1/wallets")
-                    .header(CORRELATION_ID_HEADER, CORRELATION_ID)
+                    .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                     .contentType(APPLICATION_JSON)
                     .content(fieldJson("userId", USER_ID)))
             .andExpect(status().isCreated())
@@ -51,7 +50,7 @@ class WalletControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets")
-                .header(CORRELATION_ID_HEADER, CORRELATION_ID)
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(emptyJson()))
         .andExpect(status().isBadRequest())
