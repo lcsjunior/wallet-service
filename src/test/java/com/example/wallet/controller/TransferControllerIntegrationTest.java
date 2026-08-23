@@ -144,4 +144,29 @@ class TransferControllerIntegrationTest extends AppTests {
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
   }
+
+  @Test
+  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
+  void shouldRejectWhenCorrelationIdReused() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
+                .contentType(APPLICATION_JSON)
+                .content(loadJson("request/transfer/transfer-amount-75.json")))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
+                .contentType(APPLICATION_JSON)
+                .content(loadJson("request/transfer/transfer-amount-10.json")))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().json(loadJson("response/transfer/error-correlation-conflict.json"), STRICT));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
+  }
 }

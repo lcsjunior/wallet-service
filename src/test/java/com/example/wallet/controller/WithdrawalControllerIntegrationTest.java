@@ -110,4 +110,29 @@ class WithdrawalControllerIntegrationTest extends AppTests {
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
+
+  @Test
+  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
+  void shouldRejectWhenCorrelationIdReused() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("amount", "30.00")))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("amount", "40.00")))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content()
+                .json(loadJson("response/withdrawal/error-correlation-conflict.json"), STRICT));
+
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
+  }
 }
