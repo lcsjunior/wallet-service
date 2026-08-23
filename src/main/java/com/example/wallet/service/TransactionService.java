@@ -37,7 +37,12 @@ public class TransactionService {
   @Transactional
   public TransactionOutcome deposit(UUID walletId, BigDecimal amount, UUID correlationId) {
     var idempotencyEntry =
-        IdempotencyEntry.of(correlationId, OperationType.DEPOSIT, walletId.toString(), amount);
+        IdempotencyEntry.builder()
+            .correlationId(correlationId)
+            .operationType(OperationType.DEPOSIT)
+            .key(walletId.toString())
+            .amount(amount)
+            .build();
     if (idempotencyService.isReplay(idempotencyEntry)) {
       return REPLAYED;
     }
@@ -63,7 +68,12 @@ public class TransactionService {
   @Transactional
   public TransactionOutcome withdraw(UUID walletId, BigDecimal amount, UUID correlationId) {
     var idempotencyEntry =
-        IdempotencyEntry.of(correlationId, OperationType.WITHDRAWAL, walletId.toString(), amount);
+        IdempotencyEntry.builder()
+            .correlationId(correlationId)
+            .operationType(OperationType.WITHDRAWAL)
+            .key(walletId.toString())
+            .amount(amount)
+            .build();
     if (idempotencyService.isReplay(idempotencyEntry)) {
       return REPLAYED;
     }
@@ -91,8 +101,12 @@ public class TransactionService {
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID correlationId) {
     validateSelfTransfer(fromWalletId, toWalletId);
     var idempotencyEntry =
-        IdempotencyEntry.of(
-            correlationId, OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
+        IdempotencyEntry.builder()
+            .correlationId(correlationId)
+            .operationType(OperationType.TRANSFER)
+            .key(fromWalletId + "->" + toWalletId)
+            .amount(amount)
+            .build();
     if (idempotencyService.isReplay(idempotencyEntry)) {
       return REPLAYED;
     }
