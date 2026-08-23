@@ -1,17 +1,14 @@
 package com.example.wallet.service;
 
-import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
 import static com.example.wallet.constants.Messages.SAME_WALLET_TRANSFER;
 import static com.example.wallet.dto.TransactionOutcome.APPLIED;
 import static com.example.wallet.dto.TransactionOutcome.REPLAYED;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 import com.example.wallet.dto.TransactionOutcome;
 import com.example.wallet.entity.IdempotencyEntry;
 import com.example.wallet.entity.OperationType;
 import com.example.wallet.entity.TransactionType;
-import com.example.wallet.entity.Wallet;
 import com.example.wallet.entity.WalletTransaction;
 import com.example.wallet.exception.ServiceException;
 import com.example.wallet.repository.WalletRepository;
@@ -72,7 +69,6 @@ public class TransactionService {
     }
 
     var wallet = walletRepository.findWallet(walletId);
-    validateSufficientBalance(wallet, amount);
     wallet.debit(amount);
     walletRepository.save(wallet);
 
@@ -102,7 +98,6 @@ public class TransactionService {
     }
 
     var fromWallet = walletRepository.findWallet(fromWalletId);
-    validateSufficientBalance(fromWallet, amount);
     var toWallet = walletRepository.findWallet(toWalletId);
     fromWallet.debit(amount);
     toWallet.credit(amount);
@@ -136,12 +131,6 @@ public class TransactionService {
   private void validateSelfTransfer(UUID fromWalletId, UUID toWalletId) {
     if (fromWalletId.equals(toWalletId)) {
       throw ServiceException.of(SAME_WALLET_TRANSFER, BAD_REQUEST);
-    }
-  }
-
-  private void validateSufficientBalance(Wallet wallet, BigDecimal amount) {
-    if (wallet.getBalance().compareTo(amount) < 0) {
-      throw ServiceException.of(INSUFFICIENT_BALANCE, UNPROCESSABLE_ENTITY);
     }
   }
 }
