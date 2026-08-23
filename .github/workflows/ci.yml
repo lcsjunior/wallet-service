@@ -9,6 +9,7 @@ on:
 jobs:
   code-quality:
     name: SonarCloud Analysis
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
