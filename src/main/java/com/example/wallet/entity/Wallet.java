@@ -1,7 +1,10 @@
 package com.example.wallet.entity;
 
 import static com.example.wallet.constants.Constants.ZERO_MONEY;
+import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
+import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
+import com.example.wallet.exception.ServiceException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -26,6 +29,9 @@ public class Wallet {
   @Column(name = "user_id", nullable = false, updatable = false)
   private UUID userId;
 
+  @Column(name = "correlation_id", nullable = false, unique = true, updatable = false)
+  private UUID correlationId;
+
   @Column(name = "balance", nullable = false, precision = 19, scale = 2)
   private BigDecimal balance = ZERO_MONEY;
 
@@ -43,12 +49,13 @@ public class Wallet {
 
   protected Wallet() {}
 
-  private Wallet(UUID userId) {
+  private Wallet(UUID userId, UUID correlationId) {
     this.userId = userId;
+    this.correlationId = correlationId;
   }
 
-  public static Wallet of(UUID userId) {
-    return new Wallet(userId);
+  public static Wallet of(UUID userId, UUID correlationId) {
+    return new Wallet(userId, correlationId);
   }
 
   public void credit(BigDecimal amount) {
@@ -56,6 +63,9 @@ public class Wallet {
   }
 
   public void debit(BigDecimal amount) {
+    if (this.balance.compareTo(amount) < 0) {
+      throw ServiceException.of(INSUFFICIENT_BALANCE, UNPROCESSABLE_ENTITY);
+    }
     this.balance = this.balance.subtract(amount);
   }
 

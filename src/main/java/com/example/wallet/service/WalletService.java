@@ -1,6 +1,5 @@
 package com.example.wallet.service;
 
-import com.example.wallet.dto.BalanceResponse;
 import com.example.wallet.dto.WalletResponse;
 import com.example.wallet.entity.Wallet;
 import com.example.wallet.mapper.WalletMapper;
@@ -21,14 +20,9 @@ public class WalletService {
   }
 
   @Transactional
-  public WalletResponse createWallet(UUID userId) {
-    var wallet = Wallet.of(userId);
+  public WalletResponse createWallet(UUID userId, UUID correlationId) {
+    var wallet = Wallet.of(userId, correlationId);
     walletRepository.saveAndFlush(wallet);
     return walletMapper.toWalletResponse(wallet);
-  }
-
-  public BalanceResponse getCurrentBalance(UUID walletId) {
-    var wallet = walletRepository.findWallet(walletId);
-    return walletMapper.toBalanceResponse(wallet);
   }
 }

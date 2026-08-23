@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Validation error",
+  "status": 400,
+  "detail": "Missing Correlation-Id header",
+  "instance": "/v1/wallets"
+}

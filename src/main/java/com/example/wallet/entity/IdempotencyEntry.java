@@ -31,19 +31,52 @@ public class IdempotencyEntry implements Serializable {
 
   protected IdempotencyEntry() {}
 
-  private IdempotencyEntry(UUID correlationId, String requestFingerprint) {
-    this.correlationId = correlationId;
-    this.requestFingerprint = requestFingerprint;
+  private IdempotencyEntry(Builder builder) {
+    this.correlationId = builder.correlationId;
+    this.requestFingerprint = buildFingerprint(builder.operationType, builder.key, builder.amount);
   }
 
-  public static IdempotencyEntry of(
-      UUID correlationId, OperationType operationType, String key, BigDecimal amount) {
-    return new IdempotencyEntry(correlationId, buildFingerprint(operationType, key, amount));
+  public static Builder builder() {
+    return new Builder();
   }
 
   private static String buildFingerprint(
       OperationType operationType, String key, BigDecimal amount) {
     return operationType + ":" + key + ":" + amount.toPlainString();
+  }
+
+  public static final class Builder {
+
+    private UUID correlationId;
+    private OperationType operationType;
+    private String key;
+    private BigDecimal amount;
+
+    private Builder() {}
+
+    public Builder correlationId(UUID correlationId) {
+      this.correlationId = correlationId;
+      return this;
+    }
+
+    public Builder operationType(OperationType operationType) {
+      this.operationType = operationType;
+      return this;
+    }
+
+    public Builder key(String key) {
+      this.key = key;
+      return this;
+    }
+
+    public Builder amount(BigDecimal amount) {
+      this.amount = amount;
+      return this;
+    }
+
+    public IdempotencyEntry build() {
+      return new IdempotencyEntry(this);
+    }
   }
 
   public UUID getCorrelationId() {

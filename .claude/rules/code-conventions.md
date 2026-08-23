@@ -35,6 +35,11 @@ changing or removing any rule, and state what the code does today that motivates
 - Profile properties hold only what differs from `application.properties`
 - Cache settings live in properties; Redis timeouts stay at framework defaults
 
+## Logging
+
+- No sensitive data in logs — never log HTTP payloads, headers, credentials or personal data; the `correlationId` in the MDC is what ties a line to its request
+- A class that logs should declare `LOG_PREFIX` with its own name, prepended to the message — a recommendation, not an absolute: skip it where the message already identifies its own origin
+
 ## Testing
 
 - Integration classes are suffixed `IntegrationTest`, unit classes `Test`
@@ -42,7 +47,7 @@ changing or removing any rule, and state what the code does today that motivates
 - Integration tests run against a real Redis and an in-memory database, both reset before every test
 - Test methods `should<Outcome>When<Condition>`, `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
 - Assert whole bodies with `.content().json(expected, STRICT)`
-- JSON payloads live under `mock/` as `{request,response}/<controller>/<payload-type>-<scenario>.json`; single-field and empty bodies come from `JsonUtils`
+- JSON payloads live under `mock/` as `{request,response}/<controller>/<payload-type>-<scenario>.json`
 - A request `<scenario>` names what the payload contains; the outcome belongs in the test name
 - One seed `.sql` per test class in `mock/sql/`, holding only its `INSERT`s; every `@Sql` runs `/mock/sql/clear-tables.sql` first
 - Seeded UUIDs never repeat across files; `user_id` is the same everywhere
@@ -61,7 +66,8 @@ changing or removing any rule, and state what the code does today that motivates
 ## Style
 
 - Objects from factory methods or builders rather than direct `new`; factories named `of`
-- `validate*` only when the method has a conditional that rejects; otherwise name it after what it does
+- Up to three arguments go through the `of` factory; more than three go through a builder
+- `validate*` is optional, and reserved for a method whose only job is to reject; a method that does
+  real work may reject as part of it and still be named after what it does
 - Static-import constants and enum values, unless two enums share a value's simple name; ordinary static calls stay qualified
 - No comments or Javadoc
-- A class that logs declares `LOG_PREFIX` with its own name, prepended to the message

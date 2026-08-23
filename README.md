@@ -13,9 +13,10 @@ single node.
 
 ## Features
 
-- Wallets — a user may hold more than one
+- Wallets — a user may hold more than one, so a repeated `Correlation-Id` is rejected, never
+  silently duplicated
 - Deposits, withdrawals, and transfers between two wallets
-- Idempotent mutations via a `Correlation-Id` header; replays are flagged, never rejected
+- Money movements are idempotent via a `Correlation-Id` header; replays are flagged, never rejected
 - Optimistic locking — concurrent updates to the same wallet fail with `409`
 - Immutable audit ledger, with both legs of a transfer recorded
 - RFC 9457 errors (`application/problem+json`)
@@ -55,15 +56,17 @@ Or locally, with Redis on `localhost:6379` (or `CACHE_TYPE=none`):
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-The `dev` profile adds plain-text logs and the H2 console at `/h2-console`. The database
+The `dev` profile adds SQL logging and the H2 console at `/h2-console`. The database
 is in-memory: every restart starts empty.
+
+Application logs carry the request's `Correlation-Id` as the MDC field `correlationId`; HTTP
+payloads are never logged.
 
 ## API
 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/v1/wallets` | Create a wallet for a user |
-| `GET` | `/v1/wallets/{walletId}/balance` | Read the current balance |
 | `POST` | `/v1/wallets/{walletId}/deposits` | Credit a wallet |
 | `POST` | `/v1/wallets/{walletId}/withdrawals` | Debit a wallet |
 | `POST` | `/v1/transfers` | Move funds between two wallets |
@@ -72,8 +75,9 @@ is in-memory: every restart starts empty.
 # Create a wallet — 201 Created
 curl -X POST http://localhost:8080/v1/wallets \
   -H 'Content-Type: application/json' \
+  -H 'Correlation-Id: 6c1b0a2d-5e4f-4c3b-8a19-7d2e3f4a5b60' \
   -d '{"userId":"3f2504e0-4f89-11d3-9a0c-0305e82c3301"}'
-# {"walletId":"6163fb26-3a06-4080-a987-35c5e5a17297","balance":"0.00","createdAt":"..."}
+# {"walletId":"6163fb26-3a06-4080-a987-35c5e5a17297","createdAt":"..."}
 
 # Deposit — 204 No Content, Idempotent-Replayed: false
 curl -i -X POST http://localhost:8080/v1/wallets/$WALLET_ID/deposits \
@@ -86,14 +90,12 @@ curl -i -X POST http://localhost:8080/v1/transfers \
   -H 'Content-Type: application/json' \
   -H 'Correlation-Id: 2b6b1f0e-7c3a-4b2d-8f5e-1a9c6d4e3f21' \
   -d '{"fromWalletId":"'$FROM'","toWalletId":"'$TO'","amount":"25.00"}'
-
-# Balance — 200 OK
-curl http://localhost:8080/v1/wallets/$WALLET_ID/balance
-# {"balance":"75.00"}
 ```
 
-Amounts are JSON strings, never numbers. Mutating endpoints require `Correlation-Id` and
-answer `204 No Content` with `Idempotent-Replayed: true|false`.
+Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`. The money
+movements answer `204 No Content` with `Idempotent-Replayed: true|false`; wallet creation
+answers `201 Created` with the wallet, and reusing its `Correlation-Id` answers `409` instead
+of creating a second one.
 
 ### Errors
 
@@ -118,7 +120,7 @@ answer `204 No Content` with `Idempotent-Replayed: true|false`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SPRING_PROFILES_ACTIVE` | *(none)* | `dev` for plain-text logs and the H2 console |
+| `SPRING_PROFILES_ACTIVE` | *(none)* | `dev` for SQL logging and the H2 console |
 | `REDIS_HOST` | `localhost` | Redis hostname |
 | `REDIS_PORT` | `6379` | Redis port |
 | `CACHE_TYPE` | `redis` | Set to `none` to disable caching entirely |

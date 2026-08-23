@@ -24,6 +24,13 @@ class TransferControllerIntegrationTest extends AppTests {
 
   private static final String FROM_WALLET_ID = "7bbda0fe-87ca-42a5-81df-2679d05f4b14";
   private static final String TO_WALLET_ID = "e79b9f63-59d1-4ede-a766-e6e68d53161d";
+  private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
+
+  private static String transferJson(String fromWalletId, String toWalletId, String amount) {
+    return """
+        {"fromWalletId": "%s", "toWalletId": "%s", "amount": "%s"}"""
+        .formatted(fromWalletId, toWalletId, amount);
+  }
 
   @Test
   @DisplayName("Deve retornar 204 movendo o saldo entre as carteiras quando o valor é válido")
@@ -33,7 +40,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-amount-75.json")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
@@ -49,7 +56,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-amount-1000.json")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "1000.00")))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(content().json(loadJson("response/transfer/error-insufficient.json"), STRICT));
 
@@ -65,7 +72,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-unknown-from-wallet.json")))
+                .content(transferJson(MISSING_WALLET_ID, TO_WALLET_ID, "10.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
@@ -81,7 +88,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-unknown-to-wallet.json")))
+                .content(transferJson(FROM_WALLET_ID, MISSING_WALLET_ID, "10.00")))
         .andExpect(status().isNotFound())
         .andExpect(
             content().json(loadJson("response/transfer/error-wallet-not-found.json"), STRICT));
@@ -97,7 +104,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-same-wallet.json")))
+                .content(transferJson(FROM_WALLET_ID, FROM_WALLET_ID, "10.00")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/transfer/error-same-wallet.json"), STRICT));
 
@@ -112,7 +119,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-amount-negative.json")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "-5.00")))
         .andExpect(status().isBadRequest())
         .andExpect(content().json(loadJson("response/transfer/error-non-positive.json"), STRICT));
 
@@ -128,7 +135,7 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-amount-75.json")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "false"));
 
@@ -137,9 +144,34 @@ class TransferControllerIntegrationTest extends AppTests {
             post("/v1/transfers")
                 .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
-                .content(loadJson("request/transfer/transfer-amount-75.json")))
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
         .andExpect(status().isNoContent())
         .andExpect(header().string(IDEMPOTENT_REPLAYED_HEADER, "true"));
+
+    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
+    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");
+  }
+
+  @Test
+  @DisplayName("Deve retornar 409 quando o Correlation-Id é reutilizado com outro valor")
+  void shouldRejectWhenCorrelationIdReused() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
+                .contentType(APPLICATION_JSON)
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "75.00")))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            post("/v1/transfers")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000008")
+                .contentType(APPLICATION_JSON)
+                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "10.00")))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().json(loadJson("response/transfer/error-correlation-conflict.json"), STRICT));
 
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("25.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("75.00");

@@ -1,7 +1,0 @@
-{
-  "type": "about:blank",
-  "title": "Business violation",
-  "status": 404,
-  "detail": "Wallet not found",
-  "instance": "/v1/wallets/55e476d1-f217-4583-a75a-0dd0a548c858/balance"
-}

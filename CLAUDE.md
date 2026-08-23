@@ -30,12 +30,15 @@ formats staged files — enable it once per clone with
 ## Architecture
 
 Layering is `controller → service → repository`, with MapStruct between entity and DTO.
-Four controllers under `/v1`, two services, three repositories.
+Four controllers under `/v1`, three services, three repositories.
 
-- `WalletService` — wallet creation and balance reads. The only user of `WalletMapper`.
+- `WalletService` — wallet creation. The only user of `WalletMapper`.
 - `TransactionService` — all money movement (`deposit`, `withdraw`, `transfer`). Each
   method is one `@Transactional` unit touching wallets, the ledger and the idempotency
   table together.
+- `IdempotencyService` — replay detection and entry persistence. The only user of
+  `IdempotencyRepository`; it declares no transaction of its own and runs inside the
+  caller's.
 
 `TransferController` sits at `/v1/transfers` rather than under a wallet, because a
 transfer belongs to two wallets; deposits and withdrawals nest under
@@ -46,9 +49,13 @@ instead of returning `Optional` — callers never handle absence themselves.
 
 ### Idempotency
 
-Every mutation requires a `Correlation-Id` header. `IdempotencyEntry.of` derives a
+Every endpoint requires a `Correlation-Id` header, and no mutation can be applied twice under
+the same one — but the three money movements and wallet creation get there by different routes,
+and only the movements replay.
+
+The money movements go through `IdempotencyService`. `IdempotencyEntry`'s builder derives a
 *fingerprint* — `operationType:key:amount`, where `key` is the wallet id, or
-`from->to` for transfers. `TransactionService.isReplay` then:
+`from->to` for transfers. `IdempotencyService.isReplay` then:
 
 1. looks the correlation id up in `IdempotencyRepository`;
 2. absent → proceeds, and persists the entry at the end of the method;
@@ -58,9 +65,18 @@ Every mutation requires a `Correlation-Id` header. `IdempotencyEntry.of` derives
 The fingerprint carries every business parameter, which is what makes "same key,
 different body" a conflict instead of a silent no-op.
 
-Each method returns `TransactionOutcome` (`APPLIED` / `REPLAYED`) and the controllers echo
-`outcome.isReplayed()` as `Idempotent-Replayed: true|false` on the `204`. The response has
-no body, so that header is the only replay signal a client gets.
+Wallet creation does not use that table and does not replay. `Wallet` carries the
+`correlationId` itself, `unique`, and `WalletService.createWallet` simply inserts — a repeated
+correlation id loses the constraint at flush and `GlobalExceptionHandler` turns the
+`DataIntegrityViolationException` into `409`. There is no read before the insert, so the
+database is the only thing deciding, and the same constraint covers two concurrent creates.
+The cost of that simplicity: a client that retries after a timeout gets `409` rather than the
+wallet it created, and there is no endpoint to look it up.
+
+Each money movement returns `TransactionOutcome` (`APPLIED` / `REPLAYED`) and its controller
+echoes `outcome.isReplayed()` as `Idempotent-Replayed: true|false` on the `204`. The response
+has no body, so that header is the only replay signal those clients get. Creation carries no
+such header — there is no replay to signal.
 
 Note the two enums: `TransactionType` (ledger rows, four values including both transfer
 legs) and `OperationType` (first segment of the fingerprint, three values). They are not
@@ -86,7 +102,17 @@ anywhere; retrying with the same `Correlation-Id` is what makes that safe.
 Balances are mutated in place on `Wallet` via `credit`/`debit`, and every movement also
 appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceAfter`,
 `correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
-`TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone.
+`TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone. That is
+why `correlation_id` alone is not unique on the ledger; the constraint is
+`(wallet_id, correlation_id)`, which still holds one row per wallet per request.
+
+### Correlation id
+
+`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and carries the `Correlation-Id` header into
+the MDC under `correlationId`, clearing it in a `finally`. Nothing is generated when the header is
+absent, since every endpoint requires it. ECS console logging renders MDC entries as top-level
+fields, so every application log line of a request is filterable by that id. Request and response
+payloads are deliberately never logged.
 
 ### Errors
 
@@ -114,7 +140,7 @@ entities, there are no migration scripts, and every restart starts empty. `open-
 off, so lazy associations only resolve inside the service transaction.
 
 - default — ECS JSON logging, H2 console off
-- `dev` — plain-text logs, SQL logging, H2 console at `/h2-console`; used by `docker compose`
+- `dev` — SQL logging, H2 console at `/h2-console`; used by `docker compose`
 - `test` — `ddl-auto=create-drop`, plain-text logs
 
 ## Tests

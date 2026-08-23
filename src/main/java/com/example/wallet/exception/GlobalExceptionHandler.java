@@ -6,6 +6,7 @@ import static com.example.wallet.constants.Messages.VALIDATION_ERROR;
 import static org.springframework.http.HttpStatus.CONFLICT;
 
 import com.example.wallet.mapper.FieldErrorMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -41,6 +42,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
   public ResponseEntity<ProblemDetail> handleOptimisticLock() {
+    var problemDetail = ProblemDetail.forStatus(CONFLICT);
+    problemDetail.setTitle(BUSINESS_ERROR_TITLE);
+    problemDetail.setDetail(ENTITY_CONFLICT);
+    return ResponseEntity.status(CONFLICT).body(problemDetail);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ProblemDetail> handleDataIntegrityViolation() {
     var problemDetail = ProblemDetail.forStatus(CONFLICT);
     problemDetail.setTitle(BUSINESS_ERROR_TITLE);
     problemDetail.setDetail(ENTITY_CONFLICT);

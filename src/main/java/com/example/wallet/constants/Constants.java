@@ -11,6 +11,8 @@ public final class Constants {
 
   public static final String CORRELATION_ID_HEADER = "Correlation-Id";
 
+  public static final String CORRELATION_ID_MDC_KEY = "correlationId";
+
   public static final String IDEMPOTENT_REPLAYED_HEADER = "Idempotent-Replayed";
 
   public static final BigDecimal ZERO_MONEY = ZERO.setScale(2, UNNECESSARY);
