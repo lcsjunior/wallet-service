@@ -47,7 +47,7 @@ public class TransactionService {
   }
 
   @Transactional
-  public TransactionOutcome deposit(UUID walletId, BigDecimal amount, String correlationId) {
+  public TransactionOutcome deposit(UUID walletId, BigDecimal amount, UUID correlationId) {
     var idempotencyEntry =
         IdempotencyEntry.of(correlationId, OperationType.DEPOSIT, walletId.toString(), amount);
     if (isReplay(idempotencyEntry)) {
@@ -74,7 +74,7 @@ public class TransactionService {
   }
 
   @Transactional
-  public TransactionOutcome withdraw(UUID walletId, BigDecimal amount, String correlationId) {
+  public TransactionOutcome withdraw(UUID walletId, BigDecimal amount, UUID correlationId) {
     var idempotencyEntry =
         IdempotencyEntry.of(correlationId, OperationType.WITHDRAWAL, walletId.toString(), amount);
     if (isReplay(idempotencyEntry)) {
@@ -103,7 +103,7 @@ public class TransactionService {
 
   @Transactional
   public TransactionOutcome transfer(
-      UUID fromWalletId, UUID toWalletId, BigDecimal amount, String correlationId) {
+      UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID correlationId) {
     rejectSelfTransfer(fromWalletId, toWalletId);
     var idempotencyEntry =
         IdempotencyEntry.of(
@@ -160,7 +160,7 @@ public class TransactionService {
     if (!storedFingerprint.equals(idempotencyEntry.getRequestFingerprint())) {
       throw ServiceException.of(CORRELATION_ID_CONFLICT, CONFLICT);
     }
-    log.info(LOG_PREFIX + "Duplicate request ignored | correlationId={}", correlationId);
+    log.info(LOG_PREFIX + "Duplicate request ignored");
     return true;
   }
 

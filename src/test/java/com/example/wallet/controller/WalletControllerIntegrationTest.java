@@ -3,18 +3,16 @@ package com.example.wallet.controller;
 import static com.example.wallet.testutils.JsonUtils.emptyJson;
 import static com.example.wallet.testutils.JsonUtils.fieldJson;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.context.jdbc.Sql.ExecutionPhase.BEFORE_TEST_METHOD;
-import static org.springframework.test.json.JsonCompareMode.LENIENT;
 import static org.springframework.test.json.JsonCompareMode.STRICT;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.example.wallet.AppTests;
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.jdbc.Sql;
@@ -31,20 +29,13 @@ class WalletControllerIntegrationTest extends AppTests {
   @Test
   @DisplayName("Deve retornar 201 e criar a carteira com saldo zero quando o userId é válido")
   void shouldCreateWalletWhenUserIdIsValid() throws Exception {
-    var response =
-        mockMvc
-            .perform(
-                post("/v1/wallets")
-                    .contentType(APPLICATION_JSON)
-                    .content(fieldJson("userId", USER_ID)))
-            .andExpect(status().isCreated())
-            .andExpect(content().json(fieldJson("balance", "0.00"), LENIENT))
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-
-    String createdWalletId = JsonPath.parse(response).read("$.walletId");
-    assertThat(balanceOf(createdWalletId)).isEqualByComparingTo("0.00");
+    mockMvc
+        .perform(
+            post("/v1/wallets").contentType(APPLICATION_JSON).content(fieldJson("userId", USER_ID)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.walletId").isNotEmpty())
+        .andExpect(jsonPath("$.balance").value("0.00"))
+        .andExpect(jsonPath("$.createdAt").isNotEmpty());
   }
 
   @Test

@@ -56,7 +56,7 @@ public class WalletTransaction {
   private BigDecimal balanceAfter;
 
   @Column(name = "correlation_id", nullable = false)
-  private String correlationId;
+  private UUID correlationId;
 
   @Column(name = "peer_wallet_id")
   private UUID peerWalletId;
@@ -94,7 +94,7 @@ public class WalletTransaction {
     private TransactionType type;
     private BigDecimal amount;
     private BigDecimal balanceAfter;
-    private String correlationId;
+    private UUID correlationId;
     private UUID peerWalletId;
 
     private Builder() {}
@@ -119,7 +119,7 @@ public class WalletTransaction {
       return this;
     }
 
-    public Builder correlationId(String correlationId) {
+    public Builder correlationId(UUID correlationId) {
       this.correlationId = correlationId;
       return this;
     }

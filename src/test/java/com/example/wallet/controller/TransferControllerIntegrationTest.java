@@ -31,7 +31,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-1")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent())
@@ -47,7 +47,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-2")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-1000.json")))
         .andExpect(status().isUnprocessableEntity())
@@ -63,7 +63,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-3")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-unknown-from-wallet.json")))
         .andExpect(status().isNotFound())
@@ -79,7 +79,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-4")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-unknown-to-wallet.json")))
         .andExpect(status().isNotFound())
@@ -95,7 +95,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-5")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-same-wallet.json")))
         .andExpect(status().isBadRequest())
@@ -110,7 +110,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-6")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-negative.json")))
         .andExpect(status().isBadRequest())
@@ -126,7 +126,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-7")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent())
@@ -135,7 +135,7 @@ class TransferControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/transfers")
-                .header(CORRELATION_ID_HEADER, "id-7")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000007")
                 .contentType(APPLICATION_JSON)
                 .content(loadJson("request/transfer/transfer-amount-75.json")))
         .andExpect(status().isNoContent())
