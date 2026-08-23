@@ -6,6 +6,7 @@ import static com.example.wallet.constants.Constants.IDEMPOTENT_REPLAYED_HEADER;
 import com.example.wallet.dto.TransferRequest;
 import com.example.wallet.service.TransactionService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,7 +26,7 @@ public class TransferController {
 
   @PostMapping
   public ResponseEntity<Void> transfer(
-      @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
+      @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
       @Valid @RequestBody TransferRequest request) {
     var outcome =
         transactionService.transfer(

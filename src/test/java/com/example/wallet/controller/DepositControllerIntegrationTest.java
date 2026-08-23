@@ -32,7 +32,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-1")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000001")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent())
@@ -47,7 +47,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-2")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000002")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "-10.00")))
         .andExpect(status().isBadRequest())
@@ -62,7 +62,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-3")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000003")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "0.015")))
         .andExpect(status().isBadRequest())
@@ -77,7 +77,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + MISSING_WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-4")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNotFound())
@@ -93,7 +93,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-5")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent())
@@ -102,7 +102,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-5")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent())
@@ -117,7 +117,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-6")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "100.00")))
         .andExpect(status().isNoContent());
@@ -125,7 +125,7 @@ class DepositControllerIntegrationTest extends AppTests {
     mockMvc
         .perform(
             post("/v1/wallets/" + WALLET_ID + "/deposits")
-                .header(CORRELATION_ID_HEADER, "id-6")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
                 .contentType(APPLICATION_JSON)
                 .content(fieldJson("amount", "999.00")))
         .andExpect(status().isConflict())

@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Immutable;
 
@@ -19,7 +20,7 @@ public class IdempotencyEntry implements Serializable {
 
   @Id
   @Column(name = "correlation_id", nullable = false)
-  private String correlationId;
+  private UUID correlationId;
 
   @Column(name = "request_fingerprint", nullable = false)
   private String requestFingerprint;
@@ -30,13 +31,13 @@ public class IdempotencyEntry implements Serializable {
 
   protected IdempotencyEntry() {}
 
-  private IdempotencyEntry(String correlationId, String requestFingerprint) {
+  private IdempotencyEntry(UUID correlationId, String requestFingerprint) {
     this.correlationId = correlationId;
     this.requestFingerprint = requestFingerprint;
   }
 
   public static IdempotencyEntry of(
-      String correlationId, OperationType operationType, String key, BigDecimal amount) {
+      UUID correlationId, OperationType operationType, String key, BigDecimal amount) {
     return new IdempotencyEntry(correlationId, buildFingerprint(operationType, key, amount));
   }
 
@@ -45,7 +46,7 @@ public class IdempotencyEntry implements Serializable {
     return operationType + ":" + key + ":" + amount.toPlainString();
   }
 
-  public String getCorrelationId() {
+  public UUID getCorrelationId() {
     return correlationId;
   }
 

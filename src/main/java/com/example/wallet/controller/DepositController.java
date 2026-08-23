@@ -28,7 +28,7 @@ public class DepositController {
   @PostMapping
   public ResponseEntity<Void> deposit(
       @PathVariable UUID walletId,
-      @RequestHeader(CORRELATION_ID_HEADER) String correlationId,
+      @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
       @Valid @RequestBody DepositRequest request) {
     var outcome = transactionService.deposit(walletId, request.amount(), correlationId);
     return ResponseEntity.noContent()
