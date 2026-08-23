@@ -43,6 +43,9 @@ class TransactionServiceTest {
   private static final UUID CORRELATION_ID =
       UUID.fromString("4d8b7e15-2a90-4c63-8f21-7b0e5c9a3d16");
 
+  private static final UUID WALLET_CORRELATION_ID =
+      UUID.fromString("6a3c9f28-5d14-4e70-9b85-2f6d1a0c7e43");
+
   @Mock private WalletRepository walletRepository;
 
   @Mock private WalletTransactionRepository walletTransactionRepository;
@@ -209,7 +212,7 @@ class TransactionServiceTest {
   }
 
   private static Wallet walletWith(String balance) {
-    var wallet = Wallet.of(USER_ID);
+    var wallet = Wallet.of(USER_ID, WALLET_CORRELATION_ID);
     wallet.credit(new BigDecimal(balance));
     return wallet;
   }

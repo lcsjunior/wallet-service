@@ -29,7 +29,7 @@ public class WalletController {
   public ResponseEntity<WalletResponse> createWallet(
       @RequestHeader(CORRELATION_ID_HEADER) UUID correlationId,
       @Valid @RequestBody CreateWalletRequest request) {
-    var response = walletService.createWallet(request.userId());
+    var response = walletService.createWallet(request.userId(), correlationId);
     return ResponseEntity.status(CREATED).body(response);
   }
 }

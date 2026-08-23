@@ -1,0 +1,7 @@
+{
+  "type": "about:blank",
+  "title": "Business violation",
+  "status": 409,
+  "detail": "Conflict detected, please try again",
+  "instance": "/v1/wallets"
+}

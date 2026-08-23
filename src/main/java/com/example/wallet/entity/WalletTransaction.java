@@ -9,10 +9,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -23,10 +23,10 @@ import org.hibernate.annotations.Immutable;
 @Immutable
 @Table(
     name = "wallet_transaction",
-    indexes =
-        @Index(
-            name = "idx_wallet_transaction_wallet_created",
-            columnList = "wallet_id, created_at"))
+    uniqueConstraints =
+        @UniqueConstraint(
+            name = "uk_wallet_transaction_wallet_correlation",
+            columnNames = {"wallet_id", "correlation_id"}))
 public class WalletTransaction {
 
   @Id

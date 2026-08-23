@@ -45,6 +45,52 @@ class WalletControllerIntegrationTest extends AppTests {
   }
 
   @Test
+  @DisplayName("Deve retornar 409 e não duplicar a carteira quando o Correlation-Id é repetido")
+  void shouldRejectWhenCorrelationIdIsRepeated() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("userId", USER_ID)))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000004")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("userId", USER_ID)))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().json(loadJson("response/wallet/error-correlation-conflict.json"), STRICT));
+
+    assertThat(walletRepository.count()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("Deve retornar 201 e outra carteira quando o mesmo usuário usa outro Correlation-Id")
+  void shouldCreateSecondWalletWhenCorrelationIdDiffers() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000005")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("userId", USER_ID)))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            post("/v1/wallets")
+                .header(CORRELATION_ID_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(fieldJson("userId", USER_ID)))
+        .andExpect(status().isCreated());
+
+    assertThat(walletRepository.count()).isEqualTo(2);
+  }
+
+  @Test
   @DisplayName("Deve retornar 400 quando o userId não é informado")
   void shouldRejectWhenUserIdIsMissing() throws Exception {
     mockMvc

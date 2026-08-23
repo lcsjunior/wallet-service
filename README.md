@@ -13,9 +13,10 @@ single node.
 
 ## Features
 
-- Wallets — a user may hold more than one
+- Wallets — a user may hold more than one, so a repeated `Correlation-Id` is rejected, never
+  silently duplicated
 - Deposits, withdrawals, and transfers between two wallets
-- Idempotent mutations via a `Correlation-Id` header; replays are flagged, never rejected
+- Money movements are idempotent via a `Correlation-Id` header; replays are flagged, never rejected
 - Optimistic locking — concurrent updates to the same wallet fail with `409`
 - Immutable audit ledger, with both legs of a transfer recorded
 - RFC 9457 errors (`application/problem+json`)
@@ -91,8 +92,10 @@ curl -i -X POST http://localhost:8080/v1/transfers \
   -d '{"fromWalletId":"'$FROM'","toWalletId":"'$TO'","amount":"25.00"}'
 ```
 
-Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`; the
-mutating ones answer `204 No Content` with `Idempotent-Replayed: true|false`.
+Amounts are JSON strings, never numbers. Every endpoint requires `Correlation-Id`. The money
+movements answer `204 No Content` with `Idempotent-Replayed: true|false`; wallet creation
+answers `201 Created` with the wallet, and reusing its `Correlation-Id` answers `409` instead
+of creating a second one.
 
 ### Errors
 
