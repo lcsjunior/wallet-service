@@ -23,7 +23,7 @@ public class WalletService {
   @Transactional
   public WalletResponse createWallet(UUID userId) {
     var wallet = Wallet.of(userId);
-    walletRepository.save(wallet);
+    walletRepository.saveAndFlush(wallet);
     return walletMapper.toWalletResponse(wallet);
   }
 
