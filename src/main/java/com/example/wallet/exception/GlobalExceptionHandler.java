@@ -42,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-  public ResponseEntity<ProblemDetail> handleOptimisticLock() {
+  public ResponseEntity<ProblemDetail> handleOptimisticLock() { // NOSONAR
     var problemDetail = ProblemDetail.forStatus(CONFLICT);
     problemDetail.setTitle(BUSINESS_ERROR_TITLE);
     problemDetail.setDetail(CONCURRENT_UPDATE);
