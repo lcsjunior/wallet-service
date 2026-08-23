@@ -1,8 +1,10 @@
 # Wallet Service
 
 [![CI](https://github.com/lcsjunior/wallet-service/actions/workflows/ci.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/ci.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
+[![SAST](https://github.com/lcsjunior/wallet-service/actions/workflows/sast.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/sast.yml)
+[![SCA](https://github.com/lcsjunior/wallet-service/actions/workflows/sca.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/sca.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
+
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-brightgreen)](https://spring.io/projects/spring-boot)
 
@@ -137,5 +139,14 @@ Conventions live in
 
 ## CI/CD
 
-`.github/workflows/ci.yml` runs `clean verify sonar:sonar` on pull requests to `main` and
-pushes to it, blocking the merge on a red SonarCloud quality gate.
+Pull requests to `main` must clear three gates before merging:
+
+| Workflow | Gate |
+|---|---|
+| `ci.yml` | `clean verify sonar:sonar` — a red SonarCloud quality gate blocks the merge |
+| `sast.yml` | CodeQL static analysis, `security-extended` query suite |
+| `sca.yml` | Dependency review — fails on high or critical advisories in added dependencies |
+
+Dependabot opens version-update pull requests weekly for Maven, GitHub Actions and Docker,
+and security updates as advisories land. To report a vulnerability, see
+[`SECURITY.md`](SECURITY.md).
