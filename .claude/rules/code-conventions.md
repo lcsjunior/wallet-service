@@ -66,6 +66,6 @@ changing or removing any rule, and state what the code does today that motivates
 ## Style
 
 - Objects from factory methods or builders rather than direct `new`; factories named `of`
-- `validate*` only when the method has a conditional that rejects; otherwise name it after what it does
+- `validate*` exactly when the method has a conditional that rejects; otherwise name it after what it does
 - Static-import constants and enum values, unless two enums share a value's simple name; ordinary static calls stay qualified
 - No comments or Javadoc

@@ -104,7 +104,7 @@ public class TransactionService {
   @Transactional
   public TransactionOutcome transfer(
       UUID fromWalletId, UUID toWalletId, BigDecimal amount, UUID correlationId) {
-    rejectSelfTransfer(fromWalletId, toWalletId);
+    validateSelfTransfer(fromWalletId, toWalletId);
     var idempotencyEntry =
         IdempotencyEntry.of(
             correlationId, OperationType.TRANSFER, fromWalletId + "->" + toWalletId, amount);
@@ -144,7 +144,7 @@ public class TransactionService {
     return APPLIED;
   }
 
-  private void rejectSelfTransfer(UUID fromWalletId, UUID toWalletId) {
+  private void validateSelfTransfer(UUID fromWalletId, UUID toWalletId) {
     if (fromWalletId.equals(toWalletId)) {
       throw ServiceException.of(SAME_WALLET_TRANSFER, BAD_REQUEST);
     }
