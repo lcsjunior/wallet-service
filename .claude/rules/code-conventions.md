@@ -26,6 +26,7 @@ changing or removing any rule, and state what the code does today that motivates
 ## Caching
 
 - Cache annotations live only on the repository
+- `cacheNames` is kebab-case
 - Never cache an absent result
 - A cache failure never reaches the caller — the call falls through to the database
 
