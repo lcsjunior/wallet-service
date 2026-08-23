@@ -12,6 +12,8 @@ public final class Messages {
 
   public static final String ENTITY_CONFLICT = "Conflict detected, please try again";
 
+  public static final String CONCURRENT_UPDATE = "Concurrent update detected, please try again";
+
   public static final String MISSING_REQUIRED_HEADER = "Missing %s header";
 
   public static final String VALIDATION_ERROR = "One or more fields are invalid";
