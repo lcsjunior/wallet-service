@@ -160,7 +160,7 @@ public class TransactionService {
     if (!storedFingerprint.equals(idempotencyEntry.getRequestFingerprint())) {
       throw ServiceException.of(CORRELATION_ID_CONFLICT, CONFLICT);
     }
-    log.info(LOG_PREFIX + "Duplicate request ignored | correlationId={}", correlationId);
+    log.info(LOG_PREFIX + "Duplicate request ignored");
     return true;
   }
 
