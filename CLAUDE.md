@@ -89,15 +89,39 @@ appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceA
 `correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
 `TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone.
 
-### Request logging
+### HTTP logging
 
-`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE`, so its MDC entry is in place for
-everything downstream, `GlobalExceptionHandler` included. It logs one line as the request
-enters (`method`, `uri`) and one from a `finally` as it leaves (`status`, `durationMs`), so
-a failed request still logs its end. The `Correlation-Id` header goes under the MDC key
-`correlationId` when it is present, and is simply absent from the MDC otherwise — nothing is
-generated, since every endpoint requires the header. ECS console logging renders MDC entries
-as top-level fields.
+`HttpLoggingFilter` runs at `HIGHEST_PRECEDENCE` and writes two entries. `HTTP INCOMING` —
+method, uri and the request headers and body — is logged **before** the chain runs, so a request
+that never returns still left a trace. `HTTP OUTGOING` — `status`, `durationMs` and the response
+headers and body — comes from the `finally`.
+
+Logging the body up front means buffering it: the servlet stream is one-shot, and
+`ContentCachingRequestWrapper` only holds what the controller has already read. `CachedBodyRequest`
+reads the whole body and replays it to the controller from a `ByteArrayInputStream`. Only a JSON
+request is wrapped — the API is JSON-only, and consuming the stream of a form-encoded request
+would break `getParameter()`; anything else travels untouched and logs `body=<not logged>`.
+
+The response side keeps `ContentCachingResponseWrapper`, which swallows the body until the
+`copyBodyToResponse()` the `finally` calls right after logging.
+
+The same filter carries the `Correlation-Id` header into the MDC under `correlationId` when the
+header is present — nothing is generated, since every endpoint requires it. ECS console logging
+renders MDC entries as top-level fields.
+
+`HttpLogSanitizer` masks before anything reaches the log: listed headers and JSON body fields
+(at any depth) become the configured replacement, and `LogFormatUtils.formatValue` truncates and
+collapses the result into one line. It only ever parses JSON, so a body it cannot read is dropped
+as `<unparseable body>` rather than logged unsanitized.
+
+Everything is configured under `wallet.http-log.*` in `application.properties`, bound to the
+`HttpLoggingProperties` record: `level` (the level the entry is emitted at, on top of the usual
+`logging.level.*` threshold), `max-body-length`, `replacement`, `masked-headers`,
+`masked-body-fields` and `excluded-paths`, the last matched by `AntPathMatcher` in
+`shouldNotFilter`.
+
+Reading the body consumes the stream, so a form-encoded endpoint would break `getParameter()` —
+the API is JSON-only today, and such an endpoint would have to be excluded.
 
 ### Errors
 

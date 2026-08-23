@@ -64,4 +64,4 @@ changing or removing any rule, and state what the code does today that motivates
 - `validate*` only when the method has a conditional that rejects; otherwise name it after what it does
 - Static-import constants and enum values, unless two enums share a value's simple name; ordinary static calls stay qualified
 - No comments or Javadoc
-- A class that logs declares `LOG_PREFIX` with its own name, prepended to the message
+- A class that logs should declare `LOG_PREFIX` with its own name, prepended to the message — a recommendation, not an absolute: skip it where the message already identifies its own origin
