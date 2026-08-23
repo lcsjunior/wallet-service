@@ -1,6 +1,9 @@
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+COPY target/*.jar app.jar
 
-COPY target/wallet-service-0.0.1-SNAPSHOT.jar app.jar
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
