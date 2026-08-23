@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:24-jre-alpine
 WORKDIR /app
 
 COPY target/wallet-service-0.0.1-SNAPSHOT.jar app.jar
