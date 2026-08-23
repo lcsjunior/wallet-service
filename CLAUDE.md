@@ -89,39 +89,13 @@ appends an `@Immutable` `WalletTransaction` carrying `type`, `amount`, `balanceA
 `correlationId` and, for transfers, `peerWalletId`. A transfer writes **two** rows —
 `TRANSFER_DEBIT` and `TRANSFER_CREDIT` — so each wallet's history reads standalone.
 
-### HTTP logging
+### Correlation id
 
-`HttpLoggingFilter` runs at `HIGHEST_PRECEDENCE` and writes two entries. `HTTP INCOMING` —
-method, uri and the request headers and body — is logged **before** the chain runs, so a request
-that never returns still left a trace. `HTTP OUTGOING` — `status`, `durationMs` and the response
-headers and body — comes from the `finally`.
-
-Logging the body up front means buffering it: the servlet stream is one-shot, and
-`ContentCachingRequestWrapper` only holds what the controller has already read. `CachedBodyRequest`
-reads the whole body and replays it to the controller from a `ByteArrayInputStream`. Only a JSON
-request is wrapped — the API is JSON-only, and consuming the stream of a form-encoded request
-would break `getParameter()`; anything else travels untouched and logs `body=<not logged>`.
-
-The response side keeps `ContentCachingResponseWrapper`, which swallows the body until the
-`copyBodyToResponse()` the `finally` calls right after logging.
-
-The same filter carries the `Correlation-Id` header into the MDC under `correlationId` when the
-header is present — nothing is generated, since every endpoint requires it. ECS console logging
-renders MDC entries as top-level fields.
-
-`HttpLogSanitizer` masks before anything reaches the log: listed headers and JSON body fields
-(at any depth) become the configured replacement, and `LogFormatUtils.formatValue` truncates and
-collapses the result into one line. It only ever parses JSON, so a body it cannot read is dropped
-as `<unparseable body>` rather than logged unsanitized.
-
-Everything is configured under `wallet.http-log.*` in `application.properties`, bound to the
-`HttpLoggingProperties` record: `level` (the level the entry is emitted at, on top of the usual
-`logging.level.*` threshold), `max-body-length`, `replacement`, `masked-headers`,
-`masked-body-fields` and `excluded-paths`, the last matched by `AntPathMatcher` in
-`shouldNotFilter`.
-
-Reading the body consumes the stream, so a form-encoded endpoint would break `getParameter()` —
-the API is JSON-only today, and such an endpoint would have to be excluded.
+`RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and carries the `Correlation-Id` header into
+the MDC under `correlationId`, clearing it in a `finally`. Nothing is generated when the header is
+absent, since every endpoint requires it. ECS console logging renders MDC entries as top-level
+fields, so every application log line of a request is filterable by that id. Request and response
+payloads are deliberately never logged.
 
 ### Errors
 

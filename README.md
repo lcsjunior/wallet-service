@@ -58,20 +58,8 @@ Or locally, with Redis on `localhost:6379` (or `CACHE_TYPE=none`):
 The `dev` profile adds SQL logging and the H2 console at `/h2-console`. The database
 is in-memory: every restart starts empty.
 
-Every HTTP exchange is logged as an `HTTP INCOMING` entry when it arrives and an `HTTP OUTGOING`
-entry when it leaves — headers and body of each direction, plus status and duration — under the
-request's `Correlation-Id` (MDC field `correlationId`). Only JSON bodies are logged; anything else reads
-`<not logged>`. Sensitive headers
-and JSON body fields are replaced by `***`. Adjust it under `wallet.http-log.*`:
-
-| Property | Default | Purpose |
-|---|---|---|
-| `wallet.http-log.level` | `INFO` | Level the entry is emitted at |
-| `wallet.http-log.max-body-length` | `4096` | Where a body is truncated |
-| `wallet.http-log.replacement` | `***` | Text that replaces a masked value |
-| `wallet.http-log.masked-headers` | `authorization,cookie,set-cookie,proxy-authorization` | Headers to mask |
-| `wallet.http-log.masked-body-fields` | `password,token,secret` | JSON fields to mask, at any depth |
-| `wallet.http-log.excluded-paths` | `/actuator/**,/h2-console/**,/swagger-ui/**,/v3/api-docs/**` | Paths that are not logged |
+Application logs carry the request's `Correlation-Id` as the MDC field `correlationId`; HTTP
+payloads are never logged.
 
 ## API
 
