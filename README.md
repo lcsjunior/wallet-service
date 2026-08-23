@@ -1,8 +1,7 @@
 # Wallet Service
 
 [![CI](https://github.com/lcsjunior/wallet-service/actions/workflows/ci.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/ci.yml)
-[![SAST](https://github.com/lcsjunior/wallet-service/actions/workflows/sast.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/sast.yml)
-[![SCA](https://github.com/lcsjunior/wallet-service/actions/workflows/sca.yml/badge.svg)](https://github.com/lcsjunior/wallet-service/actions/workflows/sca.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=lcsjunior_wallet-service&metric=coverage)](https://sonarcloud.io/summary/new_code?id=lcsjunior_wallet-service)
 
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/projects/jdk/21/)
