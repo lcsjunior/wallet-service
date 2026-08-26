@@ -87,7 +87,7 @@ why `idempotency_key` alone is not unique on the ledger; the constraint is
 
 ### Correlation id
 
-`X-Correlation-ID` is a separate header from `Idempotency-Key`: optional, free-form `String`, and
+`Correlation-ID` is a separate header from `Idempotency-Key`: optional, free-form `String`, and
 it never reaches a service — tracing only. `RequestLoggingFilter` runs at `HIGHEST_PRECEDENCE` and
 carries **both** headers into the MDC, under `correlationId` and `idempotencyKey`, clearing them in
 a `finally`. Neither is generated when absent, so those requests simply log without the field —
