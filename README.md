@@ -58,7 +58,7 @@ Or locally:
 The `dev` profile adds SQL logging and the H2 console at `/h2-console`. The database
 is in-memory: every restart starts empty.
 
-Application logs carry the request's `Idempotency-Key` and its optional `X-Correlation-ID` as the
+Application logs carry the request's `Idempotency-Key` and its optional `Correlation-ID` as the
 MDC fields `idempotencyKey` and `correlationId`; HTTP payloads are never logged.
 
 ## API
@@ -75,7 +75,7 @@ MDC fields `idempotencyKey` and `correlationId`; HTTP payloads are never logged.
 curl -X POST http://localhost:8080/v1/wallets \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 6c1b0a2d-5e4f-4c3b-8a19-7d2e3f4a5b60' \
-  -H 'X-Correlation-ID: abc123def456-trace-999' \
+  -H 'Correlation-ID: abc123def456-trace-999' \
   -d '{"userId":"3f2504e0-4f89-11d3-9a0c-0305e82c3301"}'
 # {"walletId":"6163fb26-3a06-4080-a987-35c5e5a17297","createdAt":"..."}
 
@@ -94,7 +94,7 @@ curl -i -X POST http://localhost:8080/v1/transfers \
 
 Amounts are JSON strings, never numbers. Every endpoint requires `Idempotency-Key`, a UUID, and
 reusing one answers `409` rather than applying the request twice — there is no silent replay.
-`X-Correlation-ID` is optional and free-form: it never changes the outcome, it only tags the log
+`Correlation-ID` is optional and free-form: it never changes the outcome, it only tags the log
 lines of the request. The money movements answer `204 No Content` with no body; wallet creation
 answers `201 Created` with the wallet.
 
