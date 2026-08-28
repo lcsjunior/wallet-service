@@ -37,7 +37,7 @@ class OptimisticLockIntegrationTest extends AppTests {
   void shouldRejectWhenOptimisticLockFails() throws Exception {
     doThrow(new ObjectOptimisticLockingFailureException(Wallet.class, UUID.fromString(WALLET_ID)))
         .when(walletTransactionRepository)
-        .saveAndFlush(any());
+        .save(any());
 
     mockMvc
         .perform(
