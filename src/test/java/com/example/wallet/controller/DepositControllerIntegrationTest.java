@@ -18,12 +18,12 @@ import org.springframework.test.context.jdbc.Sql;
 @Sql(
     scripts = {"/mock/sql/clear-tables.sql", "/mock/sql/deposit-seed.sql"},
     executionPhase = BEFORE_TEST_METHOD)
-class DepositControllerIntegrationTest extends AppTests {
+public class DepositControllerIntegrationTest extends AppTests {
 
   private static final String WALLET_ID = "6163fb26-3a06-4080-a987-35c5e5a17297";
   private static final String MISSING_WALLET_ID = "55e476d1-f217-4583-a75a-0dd0a548c858";
 
-  private static String depositJson(String amount) {
+  public static String depositJson(String amount) {
     return """
         {"amount": "%s"}"""
         .formatted(amount);
