@@ -53,8 +53,8 @@ concurrent requests carrying the same key.
 - creation — `Wallet.idempotencyKey` is `unique`; `WalletService.createWallet` calls
   `saveAndFlush` and a repeat loses the constraint;
 - movements — `uk_wallet_transaction_wallet_idempotency_key` on `(wallet_id, idempotency_key)`;
-  each ledger insert is a `saveAndFlush`, so a repeat loses the constraint before the method
-  returns and the balance change rolls back with it.
+  each ledger insert is a plain `save`, so a repeat loses the constraint when the transaction
+  commits and the balance change rolls back with it.
 
 Either way `GlobalExceptionHandler` turns the `DataIntegrityViolationException` into `409`
 with `ENTITY_CONFLICT`. Nothing replays: there is no `Idempotent-Replayed` header and no

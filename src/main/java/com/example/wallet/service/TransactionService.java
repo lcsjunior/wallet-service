@@ -34,7 +34,7 @@ public class TransactionService {
     wallet.credit(amount);
     walletRepository.save(wallet);
 
-    walletTransactionRepository.saveAndFlush(
+    walletTransactionRepository.save(
         WalletTransaction.builder()
             .walletId(wallet.getId())
             .type(DEPOSIT)
@@ -50,7 +50,7 @@ public class TransactionService {
     wallet.debit(amount);
     walletRepository.save(wallet);
 
-    walletTransactionRepository.saveAndFlush(
+    walletTransactionRepository.save(
         WalletTransaction.builder()
             .walletId(wallet.getId())
             .type(WITHDRAWAL)
@@ -71,7 +71,7 @@ public class TransactionService {
     walletRepository.save(fromWallet);
     walletRepository.save(toWallet);
 
-    walletTransactionRepository.saveAndFlush(
+    walletTransactionRepository.save(
         WalletTransaction.builder()
             .walletId(fromWallet.getId())
             .type(TRANSFER_DEBIT)
@@ -80,7 +80,7 @@ public class TransactionService {
             .idempotencyKey(idempotencyKey)
             .peerWalletId(toWallet.getId())
             .build());
-    walletTransactionRepository.saveAndFlush(
+    walletTransactionRepository.save(
         WalletTransaction.builder()
             .walletId(toWallet.getId())
             .type(TRANSFER_CREDIT)

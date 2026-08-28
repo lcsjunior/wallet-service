@@ -62,7 +62,7 @@ class TransactionServiceTest {
       assertThat(wallet.getBalance()).isEqualByComparingTo("175.00");
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository).save(wallet);
-      verify(walletTransactionRepository).saveAndFlush(any(WalletTransaction.class));
+      verify(walletTransactionRepository).save(any(WalletTransaction.class));
     }
   }
 
@@ -81,7 +81,7 @@ class TransactionServiceTest {
       assertThat(wallet.getBalance()).isEqualByComparingTo("25.00");
       verify(walletRepository).findWallet(WALLET_ID);
       verify(walletRepository).save(wallet);
-      verify(walletTransactionRepository).saveAndFlush(any(WalletTransaction.class));
+      verify(walletTransactionRepository).save(any(WalletTransaction.class));
     }
 
     @Test
@@ -127,7 +127,7 @@ class TransactionServiceTest {
       verify(walletRepository).findWallet(PEER_WALLET_ID);
       verify(walletRepository).save(fromWallet);
       verify(walletRepository).save(toWallet);
-      verify(walletTransactionRepository, times(2)).saveAndFlush(any(WalletTransaction.class));
+      verify(walletTransactionRepository, times(2)).save(any(WalletTransaction.class));
     }
 
     @Test
