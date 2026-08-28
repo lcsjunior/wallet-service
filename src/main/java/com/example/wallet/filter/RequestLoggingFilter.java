@@ -1,9 +1,7 @@
 package com.example.wallet.filter;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.CORRELATION_ID_MDC_KEY;
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_MDC_KEY;
+import static com.example.wallet.constants.AppHeader.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.AppHeader.IDEMPOTENCY_KEY_HEADER;
 import static org.springframework.core.Ordered.HIGHEST_PRECEDENCE;
 
 import jakarta.servlet.FilterChain;
@@ -19,6 +17,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @Order(HIGHEST_PRECEDENCE)
 public class RequestLoggingFilter extends OncePerRequestFilter {
+
+  public static final String CORRELATION_ID_MDC_KEY = "correlationId";
+
+  public static final String IDEMPOTENCY_KEY_MDC_KEY = "idempotencyKey";
 
   @Override
   protected void doFilterInternal(

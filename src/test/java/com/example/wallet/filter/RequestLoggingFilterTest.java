@@ -1,9 +1,9 @@
 package com.example.wallet.filter;
 
-import static com.example.wallet.constants.Constants.CORRELATION_ID_HEADER;
-import static com.example.wallet.constants.Constants.CORRELATION_ID_MDC_KEY;
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_MDC_KEY;
+import static com.example.wallet.constants.AppHeader.CORRELATION_ID_HEADER;
+import static com.example.wallet.constants.AppHeader.IDEMPOTENCY_KEY_HEADER;
+import static com.example.wallet.filter.RequestLoggingFilter.CORRELATION_ID_MDC_KEY;
+import static com.example.wallet.filter.RequestLoggingFilter.IDEMPOTENCY_KEY_MDC_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
