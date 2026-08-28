@@ -110,7 +110,8 @@ class TransactionServiceTest {
   class Transfer {
 
     @Test
-    @DisplayName("Deve mover o saldo e registrar as duas pernas quando as carteiras são distintas")
+    @DisplayName(
+        "Deve mover o saldo e registrar os dois lançamentos quando as carteiras são distintas")
     void shouldMoveBalanceWhenWalletsAreDistinct() {
       var fromWallet = walletWith("100.00");
       var toWallet = walletWith("0.00");
