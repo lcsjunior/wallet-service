@@ -33,6 +33,7 @@
 		<google-java-format.version>1.28.0</google-java-format.version>
 		<jacoco.version>0.8.15</jacoco.version>
 		<sonar.version>4.0.1.6619</sonar.version>
+		<sonar.coverage.exclusions>**/WalletApplication.java</sonar.coverage.exclusions>
 	</properties>
 	<dependencies>
 		<dependency>
