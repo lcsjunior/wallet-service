@@ -1,6 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
+import static com.example.wallet.constants.AppHeader.IDEMPOTENCY_KEY_HEADER;
 
 import com.example.wallet.dto.WithdrawalRequest;
 import com.example.wallet.service.TransactionService;

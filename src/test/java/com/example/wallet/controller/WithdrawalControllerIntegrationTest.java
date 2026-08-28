@@ -1,6 +1,6 @@
 package com.example.wallet.controller;
 
-import static com.example.wallet.constants.Constants.IDEMPOTENCY_KEY_HEADER;
+import static com.example.wallet.constants.AppHeader.IDEMPOTENCY_KEY_HEADER;
 import static com.example.wallet.testutils.JsonUtils.loadJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;

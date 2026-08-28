@@ -1,7 +1,8 @@
 package com.example.wallet.entity;
 
-import static com.example.wallet.constants.Constants.ZERO_MONEY;
 import static com.example.wallet.constants.Messages.INSUFFICIENT_BALANCE;
+import static java.math.BigDecimal.ZERO;
+import static java.math.RoundingMode.UNNECESSARY;
 import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 import com.example.wallet.exception.ServiceException;
@@ -20,6 +21,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Entity
 @Table(name = "wallet")
 public class Wallet {
+
+  private static final BigDecimal ZERO_MONEY = ZERO.setScale(2, UNNECESSARY);
 
   @Id
   @GeneratedValue
