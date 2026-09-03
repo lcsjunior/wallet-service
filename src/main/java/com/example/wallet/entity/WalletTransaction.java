@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -26,7 +27,11 @@ import org.hibernate.annotations.Immutable;
     uniqueConstraints =
         @UniqueConstraint(
             name = "uk_wallet_transaction_wallet_idempotency_key",
-            columnNames = {"wallet_id", "idempotency_key"}))
+            columnNames = {"wallet_id", "idempotency_key"}),
+    indexes =
+        @Index(
+            name = "idx_wallet_transaction_wallet_created",
+            columnList = "wallet_id, created_at"))
 public class WalletTransaction {
 
   @Id
