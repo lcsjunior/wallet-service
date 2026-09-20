@@ -45,7 +45,7 @@ changing or removing any rule, and state what the code does today that motivates
 - Integration classes are suffixed `IntegrationTest`, unit classes `Test`
 - One integration class per controller — full stack, no mocks, extending `AppTests`; anything shared belongs there
 - Integration tests run against a real Redis and an in-memory database, both reset before every test
-- Test methods `should<Outcome>When<Condition>`, `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`
+- Test methods `should<Outcome>When<Condition>`, at most 42 characters; `@DisplayName` reading `Deve retornar <status> [efeito] quando <condição>`, at most 80
 - Assert whole bodies with `.content().json(expected, STRICT)`
 - JSON payloads live under `mock/` as `{request,response}/<controller>-<payload-type>-<scenario>.json` — no subfolder per controller, so the controller prefix keeps names unique
 - A request `<scenario>` names what the payload contains; the outcome belongs in the test name

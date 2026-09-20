@@ -20,7 +20,7 @@ class WalletTest {
 
   @Test
   @DisplayName("Deve iniciar com saldo zero na escala 2 quando a carteira é criada")
-  void shouldStartWithZeroBalanceWhenWalletIsCreated() {
+  void shouldHoldZeroBalanceWhenWalletIsNew() {
     assertThat(Wallet.of(USER_ID, IDEMPOTENCY_KEY).getBalance()).isEqualTo(new BigDecimal("0.00"));
   }
 
@@ -37,7 +37,7 @@ class WalletTest {
 
   @Test
   @DisplayName("Deve subtrair do saldo mantendo a escala 2 quando o saldo é suficiente")
-  void shouldSubtractFromBalanceWhenBalanceIsSufficient() {
+  void shouldSubtractWhenBalanceIsSufficient() {
     var wallet = walletWith("100.00");
 
     wallet.debit(new BigDecimal("75.50"));
