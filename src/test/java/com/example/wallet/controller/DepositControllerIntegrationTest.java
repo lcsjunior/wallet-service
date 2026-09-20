@@ -112,4 +112,37 @@ public class DepositControllerIntegrationTest extends AppTests {
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
   }
+
+  @Test
+  @DisplayName("Deve retornar 204 creditando o saldo quando a tentativa anterior falhou")
+  void shouldCreditBalanceWhenRetryFollowsFailure() throws Exception {
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(depositJson("0")))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().json(loadJson("response/deposit-error-non-positive.json"), STRICT));
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(depositJson("100.00")))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(
+            post("/v1/wallets/" + WALLET_ID + "/deposits")
+                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000006")
+                .contentType(APPLICATION_JSON)
+                .content(depositJson("100.00")))
+        .andExpect(status().isConflict())
+        .andExpect(
+            content().json(loadJson("response/deposit-error-idempotency-conflict.json"), STRICT));
+
+    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("100.00");
+  }
 }

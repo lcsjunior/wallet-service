@@ -16,8 +16,9 @@ single node.
 - Wallets — a user may hold more than one, so a repeated `Idempotency-Key` is rejected, never
   silently duplicated
 - Deposits, withdrawals, and transfers between two wallets
-- Every mutation is guarded by an `Idempotency-Key`: a unique constraint in the database answers
-  `409` to a repeat, so nothing is ever applied twice
+- Every mutation is guarded by an `Idempotency-Key`: money movements reserve the key in Redis
+  and a unique constraint in the database backs it up, so a repeat answers `409` and nothing is
+  ever applied twice — with Redis down the service keeps working and the database still answers
 - Optimistic locking — concurrent updates to the same wallet fail with `409`
 - Immutable audit ledger, with both legs of a transfer recorded
 - RFC 9457 errors (`application/problem+json`)
@@ -29,14 +30,17 @@ single node.
 | Language | Java 21 |
 | Framework | Spring Boot 3.5 (Web, Data JPA, Validation, Actuator) |
 | Database | H2, in-memory, PostgreSQL compatibility mode |
+| Idempotency store | Redis |
 | Mapping | MapStruct |
 | API docs | springdoc-openapi / Swagger UI |
 | Build | Maven Wrapper |
 | Quality | Spotless (google-java-format), JaCoCo, SonarQube |
+| Tests | JUnit 5, Testcontainers |
 
 ## Getting started
 
-Requires Java 21; Docker only for `docker compose`.
+Requires Java 21, and Docker for `docker compose` and for the test suite, which starts its own
+Redis container.
 
 ```bash
 ./mvnw clean package
@@ -49,14 +53,17 @@ docker compose up --build
 | Swagger UI | `http://localhost:8080/swagger-ui.html` |
 | Health | `http://localhost:8080/actuator/health` |
 
-Or locally:
+`docker compose` brings up Redis alongside the app. Or locally:
 
 ```bash
+docker run -d -p 6379:6379 redis:7-alpine
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 The `dev` profile adds SQL logging and the H2 console at `/h2-console`. The database
-is in-memory: every restart starts empty.
+is in-memory: every restart starts empty. Without a Redis reachable at `localhost:6379` the
+app still runs and stays correct — it just falls back to the database to reject repeats, losing
+at most the connect and read timeouts, `500ms` and `250ms`.
 
 Application logs carry the request's `Idempotency-Key` and its optional `Correlation-ID` as the
 MDC fields `idempotencyKey` and `correlationId`; HTTP payloads are never logged.
@@ -94,6 +101,9 @@ curl -i -X POST http://localhost:8080/v1/transfers \
 
 Amounts are JSON strings, never numbers. Every endpoint requires `Idempotency-Key`, a UUID, and
 reusing one answers `409` rather than applying the request twice — there is no silent replay.
+On the money movements the repeat is caught in Redis before any transaction opens; a key is held
+for 10 minutes, and a request that failed releases it immediately, so a movement rejected for
+insufficient balance can be retried under the same key.
 `Correlation-ID` is optional and free-form: it never changes the outcome, it only tags the log
 lines of the request. The money movements answer `204 No Content` with no body; wallet creation
 answers `201 Created` with the wallet.
@@ -114,7 +124,7 @@ answers `201 Created` with the wallet.
 |---|---|
 | `400 Bad Request` | Invalid payload, missing `Idempotency-Key`, transfer to the same wallet |
 | `404 Not Found` | Wallet does not exist |
-| `409 Conflict` | `Idempotency-Key` already used on that wallet, or a concurrent update lost the optimistic lock |
+| `409 Conflict` | `Idempotency-Key` already used on that wallet (on a transfer, already used at all), or a concurrent update lost the optimistic lock |
 | `422 Unprocessable Entity` | Insufficient balance |
 
 ## Configuration
@@ -122,6 +132,11 @@ answers `201 Created` with the wallet.
 | Variable | Default | Purpose |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | *(none)* | `dev` for SQL logging and the H2 console |
+| `REDIS_HOST` | `localhost` | Where the idempotency keys are reserved |
+| `REDIS_PORT` | `6379` | Redis port |
+| `wallet.idempotency.ttl` | `10m` | How long a reserved key is held |
+| `spring.data.redis.connect-timeout` | `500ms` | Cap on waiting for an unreachable Redis |
+| `spring.data.redis.timeout` | `250ms` | Cap on a Redis command |
 
 On `SIGTERM`, the app stops accepting new requests but lets in-flight ones finish, up to
 `spring.lifecycle.timeout-per-shutdown-phase` (20s).

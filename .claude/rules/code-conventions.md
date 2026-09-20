@@ -33,7 +33,7 @@ changing or removing any rule, and state what the code does today that motivates
 ## Configuration
 
 - Profile properties hold only what differs from `application.properties`
-- Cache settings live in properties; Redis timeouts stay at framework defaults
+- Cache settings live in properties; Redis connect and read timeouts stay well under a second — it sits on the request path, so stalling there costs more than missing
 
 ## Logging
 
