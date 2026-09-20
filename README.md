@@ -123,6 +123,9 @@ answers `201 Created` with the wallet.
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | *(none)* | `dev` for SQL logging and the H2 console |
 
+On `SIGTERM`, the app stops accepting new requests but lets in-flight ones finish, up to
+`spring.lifecycle.timeout-per-shutdown-phase` (20s).
+
 ## Development
 
 ```bash
