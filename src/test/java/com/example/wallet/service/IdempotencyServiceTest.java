@@ -1,8 +1,6 @@
 package com.example.wallet.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
@@ -69,23 +67,5 @@ class IdempotencyServiceTest {
         .thenThrow(new RedisConnectionFailureException("connection refused"));
 
     assertThat(idempotencyService.reserve(REQUEST_URI, IDEMPOTENCY_KEY)).isTrue();
-  }
-
-  @Test
-  @DisplayName("Deve apagar a reserva quando a chave é liberada")
-  void shouldDeleteKeyWhenReservationIsReleased() {
-    idempotencyService.release(REQUEST_URI, IDEMPOTENCY_KEY);
-
-    verify(redisTemplate).delete(REDIS_KEY);
-  }
-
-  @Test
-  @DisplayName("Deve engolir a falha quando o Redis está indisponível na liberação")
-  void shouldIgnoreFailureWhenReleasingKey() {
-    when(redisTemplate.delete(REDIS_KEY))
-        .thenThrow(new RedisConnectionFailureException("connection refused"));
-
-    assertThatNoException()
-        .isThrownBy(() -> idempotencyService.release(REQUEST_URI, IDEMPOTENCY_KEY));
   }
 }

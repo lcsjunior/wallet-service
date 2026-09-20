@@ -101,9 +101,10 @@ curl -i -X POST http://localhost:8080/v1/transfers \
 
 Amounts are JSON strings, never numbers. Every endpoint requires `Idempotency-Key`, a UUID, and
 reusing one answers `409` rather than applying the request twice — there is no silent replay.
-On the money movements the repeat is caught in Redis before any transaction opens; a key is held
-for 10 minutes, and a request that failed releases it immediately, so a movement rejected for
-insufficient balance can be retried under the same key.
+On the money movements the repeat is caught in Redis before any transaction opens, and the key is
+held for 10 minutes. A key is spent by the attempt, not by its outcome: one that answered `422`
+or `400` is used up too, so any retry — after a failure, a conflict or a timeout — carries a new
+key.
 `Correlation-ID` is optional and free-form: it never changes the outcome, it only tags the log
 lines of the request. The money movements answer `204 No Content` with no body; wallet creation
 answers `201 Created` with the wallet.

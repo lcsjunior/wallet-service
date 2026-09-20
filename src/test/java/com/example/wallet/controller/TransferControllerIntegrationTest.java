@@ -164,38 +164,4 @@ class TransferControllerIntegrationTest extends AppTests {
     assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("75.00");
     assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("25.00");
   }
-
-  @Test
-  @DisplayName("Deve retornar 204 movendo o saldo quando a tentativa anterior falhou")
-  void shouldMoveBalanceWhenRetryFollowsFailure() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000009")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "500.00")))
-        .andExpect(status().isUnprocessableEntity())
-        .andExpect(content().json(loadJson("response/transfer-error-insufficient.json"), STRICT));
-
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000009")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
-        .andExpect(status().isNoContent());
-
-    mockMvc
-        .perform(
-            post("/v1/transfers")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000009")
-                .contentType(APPLICATION_JSON)
-                .content(transferJson(FROM_WALLET_ID, TO_WALLET_ID, "25.00")))
-        .andExpect(status().isConflict())
-        .andExpect(
-            content().json(loadJson("response/transfer-error-idempotency-conflict.json"), STRICT));
-
-    assertThat(balanceOf(FROM_WALLET_ID)).isEqualByComparingTo("75.00");
-    assertThat(balanceOf(TO_WALLET_ID)).isEqualByComparingTo("25.00");
-  }
 }

@@ -129,38 +129,4 @@ class WithdrawalControllerIntegrationTest extends AppTests {
 
     assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
   }
-
-  @Test
-  @DisplayName("Deve retornar 204 debitando o saldo quando a tentativa anterior falhou")
-  void shouldDebitBalanceWhenRetryFollowsFailure() throws Exception {
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("150.00")))
-        .andExpect(status().isUnprocessableEntity())
-        .andExpect(content().json(loadJson("response/withdrawal-error-insufficient.json"), STRICT));
-
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("30.00")))
-        .andExpect(status().isNoContent());
-
-    mockMvc
-        .perform(
-            post("/v1/wallets/" + WALLET_ID + "/withdrawals")
-                .header(IDEMPOTENCY_KEY_HEADER, "00000000-0000-0000-0000-000000000007")
-                .contentType(APPLICATION_JSON)
-                .content(withdrawalJson("30.00")))
-        .andExpect(status().isConflict())
-        .andExpect(
-            content()
-                .json(loadJson("response/withdrawal-error-idempotency-conflict.json"), STRICT));
-
-    assertThat(balanceOf(WALLET_ID)).isEqualByComparingTo("70.00");
-  }
 }

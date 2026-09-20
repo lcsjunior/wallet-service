@@ -9,8 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.HttpStatus.CONFLICT;
-import static org.springframework.http.HttpStatus.NO_CONTENT;
-import static org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY;
 
 import com.example.wallet.exception.ServiceException;
 import com.example.wallet.service.IdempotencyService;
@@ -65,27 +63,5 @@ class IdempotencyInterceptorTest {
         .isThrownBy(() -> idempotencyInterceptor.preHandle(request, response, new Object()))
         .withMessage(ENTITY_CONFLICT)
         .satisfies(ex -> assertThat(ex.getHttpStatus()).isEqualTo(CONFLICT));
-  }
-
-  @Test
-  @DisplayName("Deve manter a reserva quando a requisição é bem-sucedida")
-  void shouldKeepReservationWhenRequestSucceeds() {
-    request.addHeader(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY);
-    response.setStatus(NO_CONTENT.value());
-
-    idempotencyInterceptor.afterCompletion(request, response, new Object(), null);
-
-    verify(idempotencyService, never()).release(anyString(), anyString());
-  }
-
-  @Test
-  @DisplayName("Deve liberar a reserva quando a requisição falha")
-  void shouldReleaseReservationWhenRequestFails() {
-    request.addHeader(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY);
-    response.setStatus(UNPROCESSABLE_ENTITY.value());
-
-    idempotencyInterceptor.afterCompletion(request, response, new Object(), null);
-
-    verify(idempotencyService).release(REQUEST_URI, IDEMPOTENCY_KEY);
   }
 }
