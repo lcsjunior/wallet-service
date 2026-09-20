@@ -46,14 +46,6 @@ public class IdempotencyService {
     }
   }
 
-  public void release(String requestUri, String idempotencyKey) {
-    try {
-      redisTemplate.delete(keyOf(requestUri, idempotencyKey));
-    } catch (DataAccessException ex) {
-      log.warn(LOG_PREFIX + "Redis unavailable, the reservation will expire on its own", ex);
-    }
-  }
-
   private String keyOf(String requestUri, String idempotencyKey) {
     return KEY_FORMAT.formatted(applicationName, requestUri, idempotencyKey);
   }

@@ -72,13 +72,13 @@ Redis is the fast path, never the authority, and it is never allowed to break a 
 `IdempotencyService` catches every `DataAccessException`, logs it and lets the call through: with
 Redis down a movement still runs, and a repeat still answers `409`, now from the constraint. The
 same holds once `wallet.idempotency.ttl` (10m) expires — the reservation is sized for a client's
-retry window, the constraint never expires. `afterCompletion` releases the reservation whenever
-the response is `4xx` or `5xx`, so a movement rejected for insufficient balance can be retried
-under the same key.
+retry window, the constraint never expires.
 
-Two consequences of the constraint being the authority. A client that retries after a timeout
-gets `409` rather than the original result, and there is no endpoint to look either up. And the
-domain rules run first, so a retried movement whose balance no longer covers it answers `422`.
+A reservation is never given back. The key is spent by the attempt, not by its outcome, so a
+movement that answered `422` or `400` has still consumed it and the same key answers `409` from
+then on; a new attempt takes a new key. That is why nothing releases in `afterCompletion`, and
+it is also why a client that retries after a timeout gets `409` rather than the original
+result — there is no endpoint to look either up.
 
 The ledger constraint is per wallet rather than global because a transfer writes two rows under
 one key — see Auditability. Putting the request URI in the Redis key reproduces that scoping for
@@ -92,7 +92,9 @@ would have accepted it.
 `Wallet` carries a JPA `@Version`. Concurrent updates to the same wallet lose the
 optimistic lock and surface as `ObjectOptimisticLockingFailureException`, which
 `GlobalExceptionHandler` turns into `409 Conflict`. There is no pessimistic locking
-anywhere; retrying with the same `Idempotency-Key` is what makes that safe.
+anywhere; the loser simply retries, and because the reservation is spent either way that retry
+carries a new `Idempotency-Key`. Both `409`s read the same on the wire, so a client cannot tell
+a lost lock from a spent key — it retries with a fresh key regardless.
 
 ### Auditability
 
