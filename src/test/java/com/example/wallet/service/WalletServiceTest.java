@@ -35,7 +35,7 @@ class WalletServiceTest {
   @InjectMocks private WalletService walletService;
 
   @Test
-  @DisplayName("Deve persistir a carteira e devolver a resposta mapeada quando o usuário é válido")
+  @DisplayName("Deve persistir e devolver a resposta mapeada quando o usuário é válido")
   void shouldReturnMappedWalletWhenUserIsValid() {
     var walletResponse = new WalletResponse(WALLET_ID, Instant.EPOCH);
     when(walletMapper.toWalletResponse(any(Wallet.class))).thenReturn(walletResponse);

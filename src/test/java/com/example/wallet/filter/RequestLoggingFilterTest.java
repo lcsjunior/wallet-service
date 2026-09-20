@@ -41,8 +41,7 @@ class RequestLoggingFilterTest {
   private final AtomicReference<Map<String, String>> mdcDuringChain = new AtomicReference<>();
 
   @Test
-  @DisplayName(
-      "Deve expor o correlation-id e o idempotency-key no MDC quando os headers são informados")
+  @DisplayName("Deve expor os dois ids no MDC quando ambos os headers são informados")
   void shouldExposeBothIdsWhenHeadersArePresent() throws Exception {
     var request = requestWithHeaders();
     captureMdcDuringChain();
@@ -58,8 +57,8 @@ class RequestLoggingFilterTest {
   }
 
   @Test
-  @DisplayName("Deve expor apenas o idempotency-key no MDC quando o correlation-id não é informado")
-  void shouldExposeIdempotencyKeyWhenCorrelationIdIsAbsent() throws Exception {
+  @DisplayName("Deve expor só o idempotency-key quando o correlation-id não é informado")
+  void shouldExposeKeyWhenCorrelationIdIsAbsent() throws Exception {
     var request = new MockHttpServletRequest("POST", REQUEST_URI);
     request.addHeader(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY);
     captureMdcDuringChain();

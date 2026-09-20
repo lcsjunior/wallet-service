@@ -50,9 +50,8 @@ class WalletControllerIntegrationTest extends AppTests {
   }
 
   @Test
-  @DisplayName(
-      "Deve retornar 201 e outra carteira quando o mesmo usuário usa outro Idempotency-Key")
-  void shouldCreateSecondWalletWhenIdempotencyKeyDiffers() throws Exception {
+  @DisplayName("Deve retornar 201 e outra carteira quando o Idempotency-Key é diferente")
+  void shouldCreateSecondWalletWhenKeyDiffers() throws Exception {
     mockMvc
         .perform(
             post("/v1/wallets")

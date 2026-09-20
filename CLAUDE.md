@@ -23,18 +23,21 @@ This file describes how the codebase works; it states no rules of its own.
 docker compose up --build                               # app in a container
 ```
 
-The suite needs no container of its own. A pre-commit hook formats staged files — enable it
-once per clone with `git config core.hooksPath .githooks`.
+The suite starts a Redis container through Testcontainers, so running it needs Docker. A
+pre-commit hook formats staged files — enable it once per clone with
+`git config core.hooksPath .githooks`.
 
 ## Architecture
 
 Layering is `controller → service → repository`, with MapStruct between entity and DTO.
-Four controllers under `/v1`, two services, two repositories.
+Four controllers under `/v1`, three services, two repositories.
 
 - `WalletService` — wallet creation. The only user of `WalletMapper`.
 - `TransactionService` — all money movement (`deposit`, `withdraw`, `transfer`). Each
   method is one `@Transactional` unit touching the wallet and the ledger together, and
   returns `void`.
+- `IdempotencyService` — the only class that talks to Redis. No domain, no persistence:
+  it reserves and releases keys for `IdempotencyInterceptor`.
 
 `TransferController` sits at `/v1/transfers` rather than under a wallet, because a
 transfer belongs to two wallets; deposits and withdrawals nest under
@@ -46,28 +49,43 @@ instead of returning `Optional` — callers never handle absence themselves.
 ### Idempotency
 
 Every endpoint requires an `Idempotency-Key` header — a UUID — and no mutation can be applied
-twice under the same one. There is one mechanism for all four: a unique constraint, and no read
-before the insert. The database is the only thing deciding, which is also what covers two
-concurrent requests carrying the same key.
+twice under the same one. Two layers do that, and only the second one guarantees it.
 
-- creation — `Wallet.idempotencyKey` is `unique`; `WalletService.createWallet` calls
-  `saveAndFlush` and a repeat loses the constraint;
-- movements — `uk_wallet_transaction_wallet_idempotency_key` on `(wallet_id, idempotency_key)`;
-  each ledger insert is a plain `save`, so a repeat loses the constraint when the transaction
-  commits and the balance change rolls back with it.
+- The three money movements reserve the key in Redis before the handler runs.
+  `IdempotencyInterceptor.preHandle` calls `IdempotencyService.reserve`, a `SETNX` with a TTL
+  under `wallet-service:idempotency:{requestURI}:{key}`; a key already reserved throws
+  `ENTITY_CONFLICT`/`409` right there, so a repeat never opens a transaction. `WebMvcConfig`
+  registers the interceptor on the deposit, withdrawal and transfer paths only — wallet
+  creation never touches Redis.
+- The unique constraints sit underneath and are the actual guarantee.
+  `Wallet.idempotencyKey` is `unique` and `createWallet` uses `saveAndFlush`, so a repeat loses
+  the constraint inside the method; `uk_wallet_transaction_wallet_idempotency_key` on
+  `(wallet_id, idempotency_key)` covers the ledger, where each insert is a plain `save`, so a
+  repeat loses the constraint at commit and the balance change rolls back with it.
 
-Either way `GlobalExceptionHandler` turns the `DataIntegrityViolationException` into `409`
-with `ENTITY_CONFLICT`. Nothing replays: there is no `Idempotent-Replayed` header and no
-outcome type — a movement either applies and answers `204`, or conflicts and answers `409`.
+Both paths end in `409` with `ENTITY_CONFLICT` — thrown as a `ServiceException`, or produced by
+`GlobalExceptionHandler` from the `DataIntegrityViolationException`. Nothing replays: there is no
+`Idempotent-Replayed` header and no outcome type — a movement either applies and answers `204`,
+or conflicts and answers `409`.
 
-Two consequences of letting the constraint decide. A client that retries after a timeout gets
-`409` rather than the original result, and there is no endpoint to look either up. And the
-domain rules run first, so a retried movement whose balance no longer covers it answers `422`
-before the constraint is ever reached.
+Redis is the fast path, never the authority, and it is never allowed to break a request.
+`IdempotencyService` catches every `DataAccessException`, logs it and lets the call through: with
+Redis down a movement still runs, and a repeat still answers `409`, now from the constraint. The
+same holds once `wallet.idempotency.ttl` (10m) expires — the reservation is sized for a client's
+retry window, the constraint never expires. `afterCompletion` releases the reservation whenever
+the response is `4xx` or `5xx`, so a movement rejected for insufficient balance can be retried
+under the same key.
 
-The ledger constraint is per wallet rather than global because a transfer writes two rows
-under one key — see Auditability. So the same key on two *different* wallets is accepted; it is
-one request per wallet that is guaranteed.
+Two consequences of the constraint being the authority. A client that retries after a timeout
+gets `409` rather than the original result, and there is no endpoint to look either up. And the
+domain rules run first, so a retried movement whose balance no longer covers it answers `422`.
+
+The ledger constraint is per wallet rather than global because a transfer writes two rows under
+one key — see Auditability. Putting the request URI in the Redis key reproduces that scoping for
+deposits and withdrawals, whose path carries the `walletId`, so the same key on two different
+wallets is still accepted. `/v1/transfers` has no such segment, so there the reservation is
+global per key: reusing one key across two transfers answers `409`, where the constraint alone
+would have accepted it.
 
 ### Concurrency
 
@@ -120,16 +138,25 @@ H2 in-memory in PostgreSQL compatibility mode, `ddl-auto=update` — schema come
 entities, there are no migration scripts, and every restart starts empty. `open-in-view` is
 off, so lazy associations only resolve inside the service transaction.
 
+Redis is reached at `REDIS_HOST`/`REDIS_PORT`, defaulting to `localhost:6379`, and its health
+indicator is off: the service is fail-open, so an unreachable Redis is not a reason to report
+`DOWN`. Connect and read timeouts are cut to `500ms`/`250ms` rather than left at the Lettuce
+defaults, because a Redis that silently drops packets — a stopped container, a vanished host —
+would otherwise hold every movement for the 60s command timeout before the fail-open path let it
+through.
+
 - default — ECS JSON logging, H2 console off
 - `dev` — SQL logging, H2 console at `/h2-console`; used by `docker compose`
 - `test` — `ddl-auto=create-drop`, plain-text logs
 
 ## Tests
 
-`AppTests` is the shared base: `@SpringBootTest` + `MockMvc`, `test` profile, and a
-`balanceOf(walletId)` helper. Integration classes extend it and each runs
-`/mock/sql/clear-tables.sql` before every test, so each test starts from a known database —
-that reset is what lets tests reuse fixed UUIDs and correlation ids.
+`AppTests` is the shared base: `@SpringBootTest` + `MockMvc`, `test` profile, a
+`balanceOf(walletId)` helper, and a `redis:7-alpine` container wired by `@ServiceConnection`
+and started once for the whole suite. Integration classes extend it and each runs
+`/mock/sql/clear-tables.sql` before every test, while the base flushes Redis before every
+test, so each one starts from a known database *and* a known key store — that reset is what
+lets tests reuse fixed UUIDs and correlation ids.
 
 `JsonUtils.loadJson` reads from the filesystem path `src/test/resources/mock/`, not the
 classpath, so the suite only passes when run from the project root.
